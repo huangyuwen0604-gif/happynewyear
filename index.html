@@ -4,101 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2025 資優班年度梗圖大賞</title>
-    <!-- 引入 Tailwind CSS -->
+    
+    <!-- 1. 樣式庫 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 React 和 ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- 引入 Babel 用於解析 JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 2. React 核心 (改用 cdnjs) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <!-- 3. Babel 解析器 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     
     <style>
-        /* 隱藏捲軸但保留功能 */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        body {
-            background-color: #0f172a; /* matches slate-900 */
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
+        body { background-color: #0f172a; color: white; margin: 0; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 載入動畫 */
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #ec4899; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <!-- 這裡預設會有文字，如果 React 成功啟動，這段文字會被覆蓋 -->
+    <div id="root" style="padding: 50px; text-align: center;">
+        <div class="loader"></div>
+        <h2 style="font-size: 24px;">系統載入中...</h2>
+        <p style="color: #94a3b8;">如果卡在這裡超過 5 秒，代表網路擋住了程式庫。</p>
+        <div id="error-message" style="color: #ef4444; margin-top: 20px; font-family: monospace; white-space: pre-wrap;"></div>
+    </div>
 
+    <!-- 錯誤捕捉腳本 -->
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            document.getElementById('error-message').innerHTML += `⚠️ 錯誤: ${msg}\n行數: ${line}\n`;
+            return false;
+        };
+    </script>
+
+    <!-- 主程式 -->
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 圖示組件 (Inline Icons) ---
-        // 為了在 Google Sites 單一檔案運作，我们将圖示直接寫在這邊，不依賴外部 import
-        const Sparkles = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/><path d="M20 4v6"/><path d="M22 7h-6"/><path d="M7 11v6"/><path d="M10 14H4"/></svg>
-        );
-        const Trophy = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-        );
-        const Check = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 6 9 17l-5-5"/></svg>
-        );
-        const PartyPopper = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 1.96L17.04 7a2.9 2.9 0 0 1-1.96 1.96L12.28 9.72a2.9 2.9 0 0 1-1.96-1.96L9.56 5.52a2.9 2.9 0 0 1-1.96-1.96L6.84 2.8a2.9 2.9 0 0 0-1.96-1.96L2 0"/><path d="m8.29 13.79-2.5 2.5"/><path d="m11.59 10.49-2.5 2.5"/></svg>
-        );
-        const AlertCircle = ({ size = 24, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-        );
+        // --- 內建圖示 (SVG) ---
+        const Sparkles = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/><path d="M20 4v6"/><path d="M22 7h-6"/><path d="M7 11v6"/><path d="M10 14H4"/></svg>;
+        const Trophy = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>;
+        const Check = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 6 9 17l-5-5"/></svg>;
+        const PartyPopper = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 1.96L17.04 7a2.9 2.9 0 0 1-1.96 1.96L12.28 9.72a2.9 2.9 0 0 1-1.96-1.96L9.56 5.52a2.9 2.9 0 0 1-1.96-1.96L6.84 2.8a2.9 2.9 0 0 0-1.96-1.96L2 0"/><path d="m8.29 13.79-2.5 2.5"/><path d="m11.59 10.49-2.5 2.5"/></svg>;
+        const AlertCircle = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>;
 
-        // --- 設定區域 (請在這裡修改) ---
-
-        // 【升級版】直接貼上 Google Drive 照片的「分享連結」即可！
+        // --- 設定資料區 ---
         const PHOTO_LINKS = [
-          "https://drive.google.com/file/d/1mCnYb4S1kuTe1B7YUoq6ArURQTe5qd1g/view?usp=sharing",
-          "https://drive.google.com/file/d/1dUWWSVf9Onp0lLJrK07z1-dPE84vsOgj/view?usp=sharing",
-          "https://drive.google.com/file/d/1BbNht3rZ9FKvth96cOnmi765_yJ5gybJ/view?usp=sharing",
-          “https://drive.google.com/file/d/1dNKWF1iqWGLNdQ5N8VHZbLC3SPKasD5S/view?usp=sharing”,
-          "https://drive.google.com/file/d/1BLogX7zHBvVKrYMS_wUbvXFS67oZ2RXy/view?usp=sharing",
-          "https://drive.google.com/file/d/1Mst0-I1migSLI7EiSP1yHcRuCwc9z60R/view?usp=sharing",
-          "https://drive.google.com/file/d/1ElsbKhTpNYvCm3o7bap4YAvhFMHZFXPR/view?usp=sharing",
-          "https://drive.google.com/file/d/18yrSvjmGavaT026VooDxToRkYG6LmaLK/view?usp=sharing",
-          "https://drive.google.com/file/d/1T24-fFroOs0cMfrj84S4i_oyu_LYbq7D/view?usp=sharing",
-          "https://drive.google.com/file/d/1ZDpt6MguJUsax-UY34wIArflSnkf-Snf/view?usp=sharing",
-          "https://drive.google.com/file/d/1G2jFPTQy9ehestEUquxi-Gh-7QH1HLpr/view?usp=sharing",
-          "https://drive.google.com/file/d/1TWy8a0fh1iLhfJNX_SseRCNu95Az3Lze/view?usp=sharing",
-          "https://drive.google.com/file/d/1HLG4OMUGsekOh2zeT6q2WprVgQR49qIi/view?usp=sharing",
-          "https://drive.google.com/file/d/11WdXaj3aHuBmBdpPoZPUjGCZ7iqU0rbk/view?usp=sharing"
-
-          
-          // ... 請繼續貼上你的 38 張連結
+          "https://drive.google.com/file/d/1mCnYb4S1kuTe1B7YUoq6ArURQTe5qd1g/view?usp=sharing", // 你的第1張圖
+          // ... 繼續貼
         ];
 
-        // 自訂每張照片的標題與描述 (選填)
         const CUSTOM_TEXTS = [
           { title: "神來一筆", desc: "這表情太有戲了" }, 
-          { title: "午休時間", desc: "這睡姿...藝術" },   
         ];
 
-        // --- 程式邏輯 (自動處理網址) ---
-
+        // --- 核心邏輯 ---
         const getSmartImageUrl = (input) => {
           if (!input) return null;
           if (!input.includes('drive.google.com')) return input;
           const idMatch = input.match(/\/d\/([a-zA-Z0-9_-]+)/);
-          if (idMatch && idMatch[1]) {
-            return `https://lh3.googleusercontent.com/d/${idMatch[1]}=s800`;
-          }
-          if (!input.includes('/')) {
-             return `https://lh3.googleusercontent.com/d/${input}=s800`;
-          }
+          if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}=s800`;
+          if (!input.includes('/')) return `https://lh3.googleusercontent.com/d/${input}=s800`;
           return null; 
         };
 
-        // --- 以下為視覺與互動組件 ---
-
+        // --- 組件 ---
         const Fireworks = ({ isActive }) => {
           const canvasRef = useRef(null);
           useEffect(() => {
