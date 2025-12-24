@@ -262,15 +262,18 @@
 
              // 初始化 Firebase (手動設定版)
             useEffect(() => {
-                const initFirebase = async () => {
-                    // ▼▼▼ 請在此處貼上您的 Firebase 設定 ▼▼▼
-                    const myFirebaseConfig = {
-                        apiKey: "AIzaSyDe-m-4ZQY5ygJWpC3Q7itoWHPs4uzbadY",
-                        authDomain: "happy-a79dd.firebaseapp.com",
-  projectId: "happy-a79dd",
-  storageBucket: "happy-a79dd.firebasestorage.app",
-                      messagingSenderId: "430340297828",
-  appId: "1:430340297828:web:4995ea27ea30bfadb3fb71",
+                // ==========================================
+        //  👇👇👇 請在下方填入您的 Firebase 設定 👇👇👇
+        // ==========================================
+        
+        const MY_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDe-m-4ZQY5ygJWpC3Q7itoWHPs4uzbadY",
+            authDomain: "happy-a79dd.firebaseapp.com",
+            projectId: "happy-a79dd",
+            storageBucket: "happy-a79dd.firebasestorage.app",
+            messagingSenderId: "430340297828",
+            appId: "1:430340297828:web:4995ea27ea30bfadb3fb71"
+        };
                     };
                     // ▲▲▲ 設定結束 ▲▲▲
 
