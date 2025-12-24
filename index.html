@@ -5,140 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2025 資優班年度梗圖大賞</title>
     
-    <!-- 樣式與核心庫 -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Firebase 核心 (雲端連線用) -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    
+    <!-- Font Awesome (Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        body { background-color: #0f172a; color: white; margin: 0; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #ec4899; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        body { background-color: #0f172a; color: white; margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+        .loader { border: 4px solid #334155; border-top: 4px solid #ec4899; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* 隱藏卷軸但保持功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
+        .card-selected { transform: scale(0.98); box-shadow: 0 0 0 4px #ec4899; }
     </style>
 </head>
 <body>
 
-    <div id="root">
-        <div style="text-align: center; padding-top: 50px;">
-            <div class="loader"></div>
-            <h2>正在啟動投票系統...</h2>
-        </div>
-    </div>
+    <div id="root"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 全域變數供 React 使用
+        window.Firebase = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp };
+    </script>
 
     <script type="text/babel">
         // ==========================================
-        //  👇👇👇 請在下方修改設定 👇👇👇
+        //  設定與資料
         // ==========================================
 
-        // 1. 照片連結區 (已幫你整合之前貼上的 14 張連結)
         const PHOTO_LINKS = [
-          "https://drive.google.com/file/d/1mCnYb4S1kuTe1B7YUoq6ArURQTe5qd1g/view?usp=sharing",
-          "https://drive.google.com/file/d/1dUWWSVf9Onp0lLJrK07z1-dPE84vsOgj/view?usp=sharing",
-          "https://drive.google.com/file/d/1BbNht3rZ9FKvth96cOnmi765_yJ5gybJ/view?usp=sharing",
-          "https://drive.google.com/file/d/1dNKWF1iqWGLNdQ5N8VHZbLC3SPKasD5S/view?usp=sharing",
-          "https://drive.google.com/file/d/1BLogX7zHBvVKrYMS_wUbvXFS67oZ2RXy/view?usp=sharing",
-          "https://drive.google.com/file/d/1Mst0-I1migSLI7EiSP1yHcRuCwc9z60R/view?usp=sharing",
-          "https://drive.google.com/file/d/1ElsbKhTpNYvCm3o7bap4YAvhFMHZFXPR/view?usp=sharing",
-          "https://drive.google.com/file/d/18yrSvjmGavaT026VooDxToRkYG6LmaLK/view?usp=sharing",
-          "https://drive.google.com/file/d/1T24-fFroOs0cMfrj84S4i_oyu_LYbq7D/view?usp=sharing",
-          "https://drive.google.com/file/d/1ZDpt6MguJUsax-UY34wIArflSnkf-Snf/view?usp=sharing",
-          "https://drive.google.com/file/d/1G2jFPTQy9ehestEUquxi-Gh-7QH1HLpr/view?usp=sharing",
-          "https://drive.google.com/file/d/1TWy8a0fh1iLhfJNX_SseRCNu95Az3Lze/view?usp=sharing",
-          "https://drive.google.com/file/d/1HLG4OMUGsekOh2zeT6q2WprVgQR49qIi/view?usp=sharing",
-          "https://drive.google.com/file/d/11WdXaj3aHuBmBdpPoZPUjGCZ7iqU0rbk/view?usp=sharing",
-          "https://drive.google.com/file/d/1kPUe3rn46E7Z5tiQCFIa_B_8-7AsPOZo/view?usp=sharing",
-        "https://drive.google.com/file/d/1nQBOYzNB-eA6puPgP4Ne4eeA28hNa3Nw/view?usp=sharing"
-            "https://drive.google.com/file/d/1h0NYurvyYIiAI-c1Miow7ivHp1sqIx1n/view?usp=sharing"
-            "https://drive.google.com/file/d/1H_xn29OOViYdBe3hcLiYZ7rHC4x9NmPL/view?usp=sharing,
-"https://drive.google.com/file/d/1TBHFXkqX-YromuzZmX4qi_ZknZGffkho/view?usp=sharing"
-"https://drive.google.com/file/d/16yJigA7wsXiSZMzfQZeQfVHJ2XHqyhHh/view?usp=sharing"
-    "https://drive.google.com/file/d/1WRfnA28hye0n0HIWkE07QcwytGtIJJqP/view?usp=sharing"
-        "https://drive.google.com/file/d/1V9twJ6qYvXqrxm06fFOzf95wrVTAKVyu/view?usp=sharing"
-        "https://drive.google.com/file/d/10L1LiOaqby0gv-ZPG54FzlRQrWm7p4HZ/view?usp=sharing 
-            "https://drive.google.com/file/d/1uUlUJgiaBMQV_zcmbmHj_pkw4pwZbZc2/view?usp=sharing"
-        "https://drive.google.com/file/d/1ThfQ7RZFZ-pPOCmBj-xOcOFWCA0ExqHe/view?usp=sharing"
-        "https://drive.google.com/file/d/1yYb-EQtskGIuYxkEVtH_tU5728oOUHtp/view?usp=sharing"
-        "https://drive.google.com/file/d/1j1oIBZI0nisgptAkQnMA08hI5rd5M0ng/view?usp=sharing"
-"https://drive.google.com/file/d/1fiNbYcCASKrC6IiWex0Kty1qK1nfoEO2/view?usp=sharing"
-    "https://drive.google.com/file/d/1-r0RAZN2EnR41URD0nAsA3J56PoAJloP/view?usp=sharing"
-        "https://drive.google.com/file/d/16Lryo_Z_HmCfqTt3LYDhSDycgQIQa_RC/view?usp=sharing"
-            "https://drive.google.com/file/d/1Zfj2HuXdAHPg8ceGFpeZcJVig4JoRnQ3/view?usp=sharing"
-        "https://drive.google.com/file/d/1kw2QmHHWShZWUsYWPvytgAJiAvUPVfT4/view?usp=sharing"
-        "https://drive.google.com/file/d/1aLnnu9rdz4P42Fjgv-vsJliX8TssskQR/view?usp=sharing 
-            "https://drive.google.com/file/d/1aLnnu9rdz4P42Fjgv-vsJliX8TssskQR/view?usp=sharing"
-            "            "ㄒ      "      apiKey: "AIzaSyDxxxx       authDomain: "xxxx.firebaseap.
-                "https://drive.google.com/file/d/1YbR0Qe6SlJhWhrDEjr0wAPai4bVWe0NK/view?usp=sharing"
-                "https://drive.google.com/file/d/1fyaFdn67r5c8YuSmLk63Tjl1B4OdzXtV/view?usp=sharing 
-                    "https://drive.google.com/file/d/1qiCwGZi3Q5YorHVKGg_tZ44NHiSN2jsf/view?usp=sharing"
-                    "https://drive.google.com/file/d/1RE_Np5Jn-rsgOume1o2sD1sMuPb8OCTo/view?usp=sharing"
-                        "https://drive.google.com/file/d/1Roz3oj4hGT5YN5F_GbbSTYa5IGqxDaQM/view?usp=sharing""                    , "              ,""    ,"p o    Ipr "xxxx", e     s       messagingSenderId: "123456...",
-               appId: "1:123456..."
-           };
-        */
+            "https://drive.google.com/file/d/1mCnYb4S1kuTe1B7YUoq6ArURQTe5qd1g/view?usp=sharing",
+            "https://drive.google.com/file/d/1dUWWSVf9Onp0lLJrK07z1-dPE84vsOgj/view?usp=sharing",
+            "https://drive.google.com/file/d/1BbNht3rZ9FKvth96cOnmi765_yJ5gybJ/view?usp=sharing",
+            "https://drive.google.com/file/d/1dNKWF1iqWGLNdQ5N8VHZbLC3SPKasD5S/view?usp=sharing",
+            "https://drive.google.com/file/d/1BLogX7zHBvVKrYMS_wUbvXFS67oZ2RXy/view?usp=sharing",
+            "https://drive.google.com/file/d/1Mst0-I1migSLI7EiSP1yHcRuCwc9z60R/view?usp=sharing",
+            "https://drive.google.com/file/d/1ElsbKhTpNYvCm3o7bap4YAvhFMHZFXPR/view?usp=sharing",
+            "https://drive.google.com/file/d/18yrSvjmGavaT026VooDxToRkYG6LmaLK/view?usp=sharing",
+            "https://drive.google.com/file/d/1T24-fFroOs0cMfrj84S4i_oyu_LYbq7D/view?usp=sharing",
+            "https://drive.google.com/file/d/1ZDpt6MguJUsax-UY34wIArflSnkf-Snf/view?usp=sharing",
+            "https://drive.google.com/file/d/1G2jFPTQy9ehestEUquxi-Gh-7QH1HLpr/view?usp=sharing",
+            "https://drive.google.com/file/d/1TWy8a0fh1iLhfJNX_SseRCNu95Az3Lze/view?usp=sharing",
+            "https://drive.google.com/file/d/1HLG4OMUGsekOh2zeT6q2WprVgQR49qIi/view?usp=sharing",
+            "https://drive.google.com/file/d/11WdXaj3aHuBmBdpPoZPUjGCZ7iqU0rbk/view?usp=sharing",
+            "https://drive.google.com/file/d/1kPUe3rn46E7Z5tiQCFIa_B_8-7AsPOZo/view?usp=sharing",
+            "https://drive.google.com/file/d/1nQBOYzNB-eA6puPgP4Ne4eeA28hNa3Nw/view?usp=sharing",
+            "https://drive.google.com/file/d/1h0NYurvyYIiAI-c1Miow7ivHp1sqIx1n/view?usp=sharing",
+            "https://drive.google.com/file/d/1H_xn29OOViYdBe3hcLiYZ7rHC4x9NmPL/view?usp=sharing",
+            "https://drive.google.com/file/d/1TBHFXkqX-YromuzZmX4qi_ZknZGffkho/view?usp=sharing",
+            "https://drive.google.com/file/d/16yJigA7wsXiSZMzfQZeQfVHJ2XHqyhHh/view?usp=sharing",
+            "https://drive.google.com/file/d/1WRfnA28hye0n0HIWkE07QcwytGtIJJqP/view?usp=sharing",
+            "https://drive.google.com/file/d/1V9twJ6qYvXqrxm06fFOzf95wrVTAKVyu/view?usp=sharing",
+            "https://drive.google.com/file/d/10L1LiOaqby0gv-ZPG54FzlRQrWm7p4HZ/view?usp=sharing",
+            "https://drive.google.com/file/d/1uUlUJgiaBMQV_zcmbmHj_pkw4pwZbZc2/view?usp=sharing",
+            "https://drive.google.com/file/d/1ThfQ7RZFZ-pPOCmBj-xOcOFWCA0ExqHe/view?usp=sharing",
+            "https://drive.google.com/file/d/1yYb-EQtskGIuYxkEVtH_tU5728oOUHtp/view?usp=sharing",
+            "https://drive.google.com/file/d/1j1oIBZI0nisgptAkQnMA08hI5rd5M0ng/view?usp=sharing",
+            "https://drive.google.com/file/d/1fiNbYcCASKrC6IiWex0Kty1qK1nfoEO2/view?usp=sharing",
+            "https://drive.google.com/file/d/1-r0RAZN2EnR41URD0nAsA3J56PoAJloP/view?usp=sharing",
+            "https://drive.google.com/file/d/16Lryo_Z_HmCfqTt3LYDhSDycgQIQa_RC/view?usp=sharing",
+            "https://drive.google.com/file/d/1Zfj2HuXdAHPg8ceGFpeZcJVig4JoRnQ3/view?usp=sharing",
+            "https://drive.google.com/file/d/1kw2QmHHWShZWUsYWPvytgAJiAvUPVfT4/view?usp=sharing",
+            "https://drive.google.com/file/d/1aLnnu9rdz4P42Fjgv-vsJliX8TssskQR/view?usp=sharing",
+            "https://drive.google.com/file/d/1YbR0Qe6SlJhWhrDEjr0wAPai4bVWe0NK/view?usp=sharing",
+            "https://drive.google.com/file/d/1fyaFdn67r5c8YuSmLk63Tjl1B4OdzXtV/view?usp=sharing",
+            "https://drive.google.com/file/d/1qiCwGZi3Q5YorHVKGg_tZ44NHiSN2jsf/view?usp=sharing",
+            "https://drive.google.com/file/d/1RE_Np5Jn-rsgOume1o2sD1sMuPb8OCTo/view?usp=sharing",
+            "https://drive.google.com/file/d/1Roz3oj4hGT5YN5F_GbbSTYa5IGqxDaQM/view?usp=sharing"
+        ];
 
-        // ==========================================
-        //  系統核心 (以下不需要修改)
-        // ==========================================
-
-        let db = null;
-        // 初始化檢查
-        if (firebaseConfig) {
-            try {
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
-                db = firebase.firestore();
-                console.log("🔥 Firebase 連線成功！多人模式已啟動");
-            } catch (e) {
-                console.error("🔥 Firebase 設定有誤，請檢查貼上的程式碼", e);
-            }
-        } else {
-            console.log("🟠 未偵測到 Firebase 設定，目前為單機演示模式");
-        }
-
-        const { useState, useEffect, useRef, useMemo } = React;
-
+        // 轉換 Google Drive 連結為可直接顯示的圖片連結
         const getSmartImageUrl = (input) => {
-          if (!input) return null;
-          input = input.trim();
-          if (!input.includes('drive.google.com')) return input;
-          const idMatch = input.match(/\/d\/([a-zA-Z0-9_-]+)/);
-          if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}=s800`;
-          if (!input.includes('/')) return `https://lh3.googleusercontent.com/d/${input}=s800`;
-          return null; 
+            if (!input) return null;
+            input = input.trim();
+            if (!input.includes('drive.google.com')) return input;
+            const idMatch = input.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}=s800`;
+            return input; 
         };
 
-        const MEME_DATA = Array.from({ length: 38 }, (_, i) => {
-          const link = PHOTO_LINKS[i] || null;
-          const imageUrl = getSmartImageUrl(link);
-          const customText = CUSTOM_TEXTS[i] || {};
-          return {
+        const MEME_DATA = PHOTO_LINKS.map((link, i) => ({
             id: i + 1,
-            url: imageUrl, 
-            bgColor: `hsl(${(i * 137) % 360}, 70%, 25%)`,
-            title: customText.title || `年度梗圖 #${i + 1}`,
-            desc: customText.desc || " "
-          };
-        });
+            url: getSmartImageUrl(link),
+            // 產生一個隨機但固定的背景色，讓圖片載入前不那麼單調
+            bgColor: `hsl(${(i * 137) % 360}, 60%, 20%)`,
+            title: `年度梗圖 #${i + 1}`,
+        }));
 
-        const Icons = {
-            Sparkles: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 3.214L13 21l-2.286-6.857L5 12l5.714-3.214L13 3z" /></svg>,
-            Trophy: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-            Chart: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
-            Back: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-        };
+        const { useState, useEffect, useMemo, useRef } = React;
 
+        // ==========================================
+        //  排行榜組件
+        // ==========================================
         const ResultsView = ({ votes, onBack, isCloudMode }) => {
             const sortedMemes = useMemo(() => {
                 const counts = {};
+                // 初始化計數
                 MEME_DATA.forEach(m => counts[m.id] = 0);
+                
+                // 計算所有投票
                 Object.values(votes).forEach(voteList => {
                     if (Array.isArray(voteList)) {
                         voteList.forEach(id => {
@@ -146,159 +135,408 @@
                         });
                     }
                 });
-                return MEME_DATA.map(m => ({ ...m, count: counts[m.id] })).sort((a, b) => b.count - a.count);
+
+                // 排序：票數高到低 -> ID 小到大
+                return MEME_DATA.map(m => ({ ...m, count: counts[m.id] }))
+                    .sort((a, b) => {
+                        if (b.count !== a.count) return b.count - a.count;
+                        return a.id - b.id;
+                    });
             }, [votes]);
+
             const totalVotes = Object.keys(votes).length;
+            const maxVotes = sortedMemes.length > 0 ? sortedMemes[0].count : 1;
 
             return (
-                <div className="min-h-screen bg-slate-900 pt-20 px-4 pb-10">
-                    <div className="max-w-4xl mx-auto">
+                <div className="min-h-screen bg-slate-900 pt-20 px-4 pb-20 animate-fade-in">
+                    <div className="max-w-3xl mx-auto">
+                        {/* Header */}
                         <div className="flex items-center justify-between mb-8">
-                            <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-white transition"><Icons.Back /> 返回投票</button>
-                            <div className="flex items-center gap-2">
-                                <div className={`w-3 h-3 rounded-full ${isCloudMode ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-yellow-500'}`}></div>
-                                <span className="text-sm text-slate-400">{isCloudMode ? '雲端即時連線中' : '單機演示模式'}</span>
+                            <button 
+                                onClick={onBack} 
+                                className="flex items-center gap-2 text-slate-400 hover:text-white transition px-4 py-2 rounded-full hover:bg-slate-800"
+                            >
+                                <i className="fas fa-arrow-left"></i> 返回投票
+                            </button>
+                            <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+                                <div className={`w-2.5 h-2.5 rounded-full ${isCloudMode ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
+                                <span className="text-xs text-slate-300 font-medium">{isCloudMode ? '即時連線中' : '單機演示模式'}</span>
                             </div>
                         </div>
-                        <h2 className="text-3xl font-bold text-center mb-2 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500">🏆 即時戰況排行榜</h2>
-                        <p className="text-center text-slate-500 mb-10">目前總投票人數：{totalVotes} 人</p>
-                        <div className="grid gap-4">
-                            {sortedMemes.map((meme, index) => (
-                                <div key={meme.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 flex items-center gap-4 relative overflow-hidden">
-                                    <div className="absolute left-0 top-0 bottom-0 bg-purple-600/10 transition-all duration-1000" style={{ width: `${(meme.count / (totalVotes * 3 || 1)) * 100}%` }}></div>
-                                    <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full font-bold text-lg ${index === 0 ? 'bg-yellow-500 text-yellow-950' : index === 1 ? 'bg-slate-300 text-slate-900' : index === 2 ? 'bg-orange-700 text-orange-100' : 'bg-slate-700 text-slate-400'}`}>{index + 1}</div>
-                                    <div className="w-16 h-12 rounded bg-slate-900 overflow-hidden flex-shrink-0">
-                                        {meme.url ? <img src={meme.url} className="w-full h-full object-cover" /> : <div className="w-full h-full" style={{backgroundColor: meme.bgColor}}></div>}
+
+                        {/* Banner */}
+                        <div className="text-center mb-10">
+                            <h2 className="text-4xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500 tracking-tight">
+                                <i className="fas fa-trophy text-yellow-500 mr-2"></i>即時戰況排行榜
+                            </h2>
+                            <p className="text-slate-400">目前總投票人數：<span className="text-white font-bold font-mono text-lg">{totalVotes}</span> 人</p>
+                        </div>
+
+                        {/* List */}
+                        <div className="grid gap-3">
+                            {sortedMemes.map((meme, index) => {
+                                // 前三名樣式
+                                let rankStyle = "bg-slate-700 text-slate-400";
+                                let rankIcon = null;
+                                if (index === 0) { rankStyle = "bg-gradient-to-br from-yellow-300 to-yellow-600 text-yellow-900"; rankIcon = "👑"; }
+                                else if (index === 1) { rankStyle = "bg-gradient-to-br from-slate-200 to-slate-400 text-slate-800"; }
+                                else if (index === 2) { rankStyle = "bg-gradient-to-br from-orange-300 to-orange-600 text-orange-900"; }
+                                
+                                // 進度條長度
+                                const barWidth = Math.max((meme.count / (maxVotes || 1)) * 100, 0);
+
+                                return (
+                                    <div key={meme.id} className="relative bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex items-center gap-4 overflow-hidden group hover:border-slate-600 transition-colors">
+                                        {/* Progress Bar Background */}
+                                        <div 
+                                            className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-indigo-600/10 to-purple-600/20 transition-all duration-1000 ease-out" 
+                                            style={{ width: `${barWidth}%` }}
+                                        ></div>
+
+                                        {/* Rank Badge */}
+                                        <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg font-black text-lg shadow-lg z-10 ${rankStyle}`}>
+                                            {rankIcon || index + 1}
+                                        </div>
+
+                                        {/* Image Thumbnail */}
+                                        <div className="w-16 h-12 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700/50 z-10 cursor-pointer hover:scale-110 transition-transform">
+                                            {meme.url ? (
+                                                <img src={meme.url} className="w-full h-full object-cover" loading="lazy" />
+                                            ) : (
+                                                <div className="w-full h-full" style={{backgroundColor: meme.bgColor}}></div>
+                                            )}
+                                        </div>
+
+                                        {/* Info */}
+                                        <div className="flex-1 min-w-0 z-10">
+                                            <h3 className="font-bold truncate text-slate-100">{meme.title}</h3>
+                                            <p className="text-xs text-slate-500 font-mono">ID: #{meme.id}</p>
+                                        </div>
+
+                                        {/* Vote Count */}
+                                        <div className="text-right z-10 min-w-[3rem]">
+                                            <span className="text-2xl font-black text-white">{meme.count}</span>
+                                            <span className="text-xs text-slate-500 ml-1 block -mt-1">票</span>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0 z-10"><h3 className="font-bold truncate">{meme.title}</h3><p className="text-xs text-slate-400">ID: #{meme.id}</p></div>
-                                    <div className="text-right z-10"><span className="text-2xl font-bold text-pink-400">{meme.count}</span><span className="text-xs text-slate-500 ml-1">票</span></div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
             );
         };
 
+        // ==========================================
+        //  圖片預覽 Lightbox
+        // ==========================================
+        const Lightbox = ({ meme, onClose }) => {
+            if (!meme) return null;
+            return (
+                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+                    <button className="absolute top-4 right-4 w-10 h-10 bg-slate-800 rounded-full text-white hover:bg-slate-700 transition flex items-center justify-center">
+                        <i className="fas fa-times"></i>
+                    </button>
+                    <div className="max-w-4xl w-full max-h-[90vh] flex flex-col items-center" onClick={e => e.stopPropagation()}>
+                        <img src={meme.url} className="max-w-full max-h-[80vh] rounded-lg shadow-2xl" />
+                        <h3 className="mt-4 text-xl font-bold text-white">{meme.title}</h3>
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        //  主應用
+        // ==========================================
         function App() {
             const [selectedIds, setSelectedIds] = useState([]);
             const [hasVoted, setHasVoted] = useState(false);
             const [viewResults, setViewResults] = useState(false);
             const [allVotes, setAllVotes] = useState({});
             const [isCloudMode, setIsCloudMode] = useState(false);
+            const [user, setUser] = useState(null);
+            const [previewMeme, setPreviewMeme] = useState(null);
+            const [isSubmitting, setIsSubmitting] = useState(false);
+
             const MAX_VOTES = 3;
-            const userId = useMemo(() => {
-                let id = localStorage.getItem('user_id');
-                if (!id) { id = 'user_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('user_id', id); }
-                return id;
-            }, []);
 
+            // 初始化 Firebase
             useEffect(() => {
-                if (db) {
-                    setIsCloudMode(true);
-                    const unsubscribe = db.collection('votes').onSnapshot(snapshot => {
-                        const newVotes = {};
-                        snapshot.forEach(doc => { newVotes[doc.id] = doc.data().choices; });
-                        setAllVotes(newVotes);
-                    }, e => console.error("Firebase 讀取失敗:", e));
-                    
-                    if (localStorage.getItem('voted_2025')) {
-                        setHasVoted(true);
-                        setSelectedIds(JSON.parse(localStorage.getItem('my_votes') || '[]'));
+                const initFirebase = async () => {
+                    if (window.Firebase && typeof window.__firebase_config !== 'undefined') {
+                        try {
+                            const config = JSON.parse(window.__firebase_config);
+                            const app = window.Firebase.initializeApp(config);
+                            const auth = window.Firebase.getAuth(app);
+                            const db = window.Firebase.getFirestore(app);
+                            
+                            // Auth Flow
+                            if (window.__initial_auth_token) {
+                                await window.Firebase.signInWithCustomToken(auth, window.__initial_auth_token);
+                            } else {
+                                await window.Firebase.signInAnonymously(auth);
+                            }
+
+                            window.Firebase.onAuthStateChanged(auth, (u) => {
+                                if (u) {
+                                    setUser(u);
+                                    setIsCloudMode(true);
+                                    // 監聽投票數據
+                                    const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default';
+                                    const votesRef = window.Firebase.collection(db, 'artifacts', appId, 'public', 'data', 'meme_votes');
+                                    
+                                    window.Firebase.onSnapshot(votesRef, (snapshot) => {
+                                        const newVotes = {};
+                                        snapshot.forEach(doc => {
+                                            newVotes[doc.id] = doc.data().choices;
+                                        });
+                                        setAllVotes(newVotes);
+                                        
+                                        // 檢查該使用者是否已投過
+                                        if (newVotes[u.uid]) {
+                                            setHasVoted(true);
+                                            setSelectedIds(newVotes[u.uid]);
+                                        }
+                                    }, (error) => {
+                                        console.error("Firebase Read Error:", error);
+                                        // 降級處理：如果讀取失敗，使用 LocalStorage
+                                        fallbackToLocal();
+                                    });
+                                }
+                            });
+                        } catch (e) {
+                            console.error("Firebase Init Failed:", e);
+                            fallbackToLocal();
+                        }
+                    } else {
+                        fallbackToLocal();
                     }
-                    return () => unsubscribe();
-                } else {
-                    const savedVotes = JSON.parse(localStorage.getItem('local_votes') || '{}');
+                };
+
+                const fallbackToLocal = () => {
+                    console.warn("Using Local Mode");
+                    setIsCloudMode(false);
+                    const savedVotes = JSON.parse(localStorage.getItem('local_votes_2025') || '{}');
                     setAllVotes(savedVotes);
-                    if (localStorage.getItem('voted_2025')) {
+                    
+                    const localUserId = localStorage.getItem('local_user_id') || `user_${Math.random().toString(36).substr(2,9)}`;
+                    localStorage.setItem('local_user_id', localUserId);
+                    setUser({ uid: localUserId, isAnonymous: true });
+                    
+                    if (savedVotes[localUserId]) {
                         setHasVoted(true);
-                        setSelectedIds(JSON.parse(localStorage.getItem('my_votes') || '[]'));
+                        setSelectedIds(savedVotes[localUserId]);
                     }
-                }
+                };
+
+                initFirebase();
             }, []);
 
+            // 選擇圖片邏輯
             const toggleSelection = (id) => {
                 if (hasVoted) return;
-                if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(itemId => itemId !== id));
-                else { if (selectedIds.length >= MAX_VOTES) return; setSelectedIds([...selectedIds, id]); }
-            };
-
-            const handleSubmit = async () => {
-                if (selectedIds.length === 0) return;
-                if (db) {
-                    try {
-                        await db.collection('votes').doc(userId).set({
-                            choices: selectedIds,
-                            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                            deviceInfo: navigator.userAgent
-                        });
-                    } catch (e) {
-                        alert("上傳失敗: " + e.message + "\n請確認 Firestore 是否已建立並設為 Test Mode");
+                
+                if (selectedIds.includes(id)) {
+                    setSelectedIds(prev => prev.filter(itemId => itemId !== id));
+                } else {
+                    if (selectedIds.length >= MAX_VOTES) {
+                        // 簡單的抖動提示或是 Toast 可以在這裡加
                         return;
                     }
-                } else {
-                    const currentVotes = JSON.parse(localStorage.getItem('local_votes') || '{}');
-                    currentVotes[userId] = selectedIds;
-                    localStorage.setItem('local_votes', JSON.stringify(currentVotes));
-                    setAllVotes(currentVotes);
+                    setSelectedIds(prev => [...prev, id]);
                 }
-                localStorage.setItem('voted_2025', 'true');
-                localStorage.setItem('my_votes', JSON.stringify(selectedIds));
-                setHasVoted(true);
+            };
+
+            // 送出投票
+            const handleSubmit = async () => {
+                if (selectedIds.length === 0 || !user) return;
+                setIsSubmitting(true);
+                
+                try {
+                    if (isCloudMode) {
+                        const db = window.Firebase.getFirestore();
+                        const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default';
+                        // 使用 user.uid 作為文件 ID，確保一人一票
+                        await window.Firebase.setDoc(
+                            window.Firebase.doc(db, 'artifacts', appId, 'public', 'data', 'meme_votes', user.uid),
+                            {
+                                choices: selectedIds,
+                                timestamp: window.Firebase.serverTimestamp(),
+                                device: navigator.userAgent
+                            }
+                        );
+                    } else {
+                        // Local Mode
+                        const currentVotes = JSON.parse(localStorage.getItem('local_votes_2025') || '{}');
+                        currentVotes[user.uid] = selectedIds;
+                        localStorage.setItem('local_votes_2025', JSON.stringify(currentVotes));
+                        setAllVotes(currentVotes);
+                        setHasVoted(true);
+                    }
+                    
+                    // 稍微延遲讓 UI 反應
+                    setTimeout(() => {
+                        setHasVoted(true);
+                        setIsSubmitting(false);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 500);
+                    
+                } catch (e) {
+                    alert("投票失敗，請稍後再試。\n" + e.message);
+                    setIsSubmitting(false);
+                }
             };
 
             const handleReset = () => {
-                if(confirm('確定要清除本機所有投票資料嗎？')) {
-                    localStorage.removeItem('voted_2025');
-                    localStorage.removeItem('local_votes');
-                    localStorage.removeItem('my_votes');
-                    localStorage.removeItem('user_id');
+                if(confirm('確定要清除本機所有投票資料並重置身份嗎？(僅限除錯用)')) {
+                    localStorage.removeItem('local_votes_2025');
+                    localStorage.removeItem('local_user_id');
                     window.location.reload();
                 }
             };
 
-            if (viewResults) return <ResultsView votes={allVotes} onBack={() => setViewResults(false)} isCloudMode={isCloudMode} />;
+            if (viewResults) {
+                return <ResultsView votes={allVotes} onBack={() => setViewResults(false)} isCloudMode={isCloudMode} />;
+            }
 
             return (
-                <div className="min-h-screen bg-slate-900 text-white font-sans pb-24">
-                    <header className="relative pt-10 pb-6 px-4 text-center">
-                        <div className="flex justify-between items-center max-w-7xl mx-auto absolute top-4 right-4 left-4 z-50">
-                             <div className="text-xs text-slate-600 cursor-pointer" onClick={handleReset}>重置</div>
-                             <button onClick={() => setViewResults(true)} className="bg-slate-800 hover:bg-slate-700 text-yellow-400 text-sm px-4 py-2 rounded-full border border-slate-700 flex items-center gap-2 transition"><Icons.Chart /> 即時戰況</button>
+                <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-pink-500 selection:text-white">
+                    {/* Lightbox */}
+                    <Lightbox meme={previewMeme} onClose={() => setPreviewMeme(null)} />
+
+                    {/* Header */}
+                    <header className="relative pt-12 pb-8 px-4 text-center overflow-hidden">
+                        {/* 背景裝飾 */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none"></div>
+
+                        <div className="relative z-10 max-w-7xl mx-auto">
+                             <div className="flex justify-between items-start absolute top-0 w-full px-2">
+                                 <button onClick={handleReset} className="text-xs text-slate-700 hover:text-red-500 transition px-2 py-1">重置(Dev)</button>
+                                 <button 
+                                    onClick={() => setViewResults(true)} 
+                                    className="glass-panel text-yellow-400 text-sm px-4 py-2 rounded-full hover:bg-slate-800 transition flex items-center gap-2 group"
+                                >
+                                    <i className="fas fa-chart-bar group-hover:scale-110 transition-transform"></i> 即時戰況
+                                </button>
+                            </div>
+
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-pink-400 text-xs font-bold tracking-wider mb-4 shadow-lg backdrop-blur-sm">
+                                <i className="fas fa-sparkles"></i> 2025 NEW YEAR SPECIAL
+                            </div>
+                            
+                            <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 drop-shadow-sm">
+                                資優班梗圖大賞
+                            </h1>
+                            
+                            <p className="text-slate-400 max-w-lg mx-auto leading-relaxed">
+                                嚴選 {MEME_DATA.length} 張年度經典。
+                                <br className="hidden md:block"/>每人僅有 <span className="text-white font-bold">3 票</span>，請慎重投出你神聖的一票！
+                            </p>
+                            
+                            <div className="mt-4 flex justify-center gap-2 text-xs text-slate-500 font-mono">
+                                <span className={isCloudMode ? "text-green-500" : "text-orange-500"}>● {isCloudMode ? 'ONLINE' : 'OFFLINE'}</span>
+                                <span>|</span>
+                                <span>ID: {user ? user.uid.slice(0, 6) : '...'}</span>
+                            </div>
                         </div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-pink-400 text-sm mb-4"><Icons.Sparkles /> <span>跨年特別企劃</span></div>
-                        <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500">資優班梗圖大賞</h1>
-                        <p className="text-slate-400">每人 3 票，選出年度最經典！<span className="block text-xs mt-1 text-slate-600">{isCloudMode ? '🟢 雲端連線中' : '🟠 單機模式'}</span></p>
                     </header>
-                    <main className="max-w-7xl mx-auto px-4">
+
+                    {/* Main Content */}
+                    <main className="max-w-7xl mx-auto px-4 pb-32">
                         {hasVoted ? (
-                            <div className="max-w-md mx-auto bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center mt-10">
-                                <div className="text-5xl mb-4">🎉</div><h2 className="text-2xl font-bold mb-2">投票成功！</h2><p className="text-slate-400 mb-6">坐等結果出爐...</p>
-                                <button onClick={() => setViewResults(true)} className="w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold transition">查看目前排名</button>
+                            <div className="max-w-lg mx-auto glass-panel rounded-3xl p-10 text-center mt-8 animate-fade-in border-t border-white/10">
+                                <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+                                    <i className="fas fa-check"></i>
+                                </div>
+                                <h2 className="text-3xl font-bold mb-3">投票成功！</h2>
+                                <p className="text-slate-400 mb-8">感謝您的參與，您的品味已被記錄。</p>
+                                <div className="space-y-3">
+                                    <button 
+                                        onClick={() => setViewResults(true)} 
+                                        className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 rounded-xl font-bold transition shadow-lg shadow-purple-900/20 flex items-center justify-center gap-2"
+                                    >
+                                        <i className="fas fa-poll"></i> 查看目前排名
+                                    </button>
+                                </div>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                                 {MEME_DATA.map((meme) => {
                                     const isSelected = selectedIds.includes(meme.id);
                                     const isMaxReached = selectedIds.length >= MAX_VOTES && !isSelected;
+                                    
                                     return (
-                                        <div key={meme.id} onClick={() => toggleSelection(meme.id)} className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-200 ${isSelected ? 'ring-4 ring-pink-500 scale-[0.98]' : 'hover:scale-[1.02] border border-slate-700'} ${isMaxReached ? 'opacity-50 grayscale' : 'opacity-100'}`}>
-                                            <div className="aspect-[4/3] bg-slate-800 relative">
-                                                {meme.url ? <img src={meme.url} className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-slate-600 font-bold text-2xl" style={{backgroundColor: meme.bgColor}}>#{meme.id}</div>}
-                                                {isSelected && <div className="absolute inset-0 bg-pink-500/40 flex items-center justify-center"><div className="bg-white rounded-full p-2 text-pink-600"><Icons.Trophy /></div></div>}
+                                        <div 
+                                            key={meme.id} 
+                                            className={`
+                                                relative group rounded-2xl overflow-hidden cursor-pointer transition-all duration-300
+                                                ${isSelected ? 'card-selected ring-4 ring-pink-500 z-10' : 'card-hover border border-slate-700/50 hover:border-slate-500'}
+                                                ${isMaxReached ? 'opacity-50 grayscale hover:grayscale-0 hover:opacity-100' : 'opacity-100'}
+                                                bg-slate-800
+                                            `}
+                                            onClick={() => toggleSelection(meme.id)}
+                                        >
+                                            {/* Image Container */}
+                                            <div className="aspect-[4/3] bg-slate-900 relative overflow-hidden">
+                                                {meme.url ? (
+                                                    <img src={meme.url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-600 font-bold text-2xl" style={{backgroundColor: meme.bgColor}}>#{meme.id}</div>
+                                                )}
+                                                
+                                                {/* Selection Overlay */}
+                                                <div className={`absolute inset-0 bg-pink-500/20 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px] ${isSelected ? 'opacity-100' : 'opacity-0'}`}>
+                                                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-pink-600 shadow-xl transform scale-100 animate-bounce">
+                                                        <i className="fas fa-check text-xl"></i>
+                                                    </div>
+                                                </div>
+
+                                                {/* Zoom Button */}
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); setPreviewMeme(meme); }}
+                                                    className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/80 rounded-full text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+                                                >
+                                                    <i className="fas fa-expand-alt text-xs"></i>
+                                                </button>
                                             </div>
-                                            <div className={`p-2 bg-slate-800 text-sm ${isSelected && 'bg-pink-900/30'}`}><div className="font-bold truncate text-slate-200">{meme.title}</div></div>
+
+                                            {/* Info */}
+                                            <div className={`p-3 transition-colors ${isSelected ? 'bg-pink-900/30' : 'bg-slate-800'}`}>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-bold text-slate-200 text-sm truncate">{meme.title}</span>
+                                                    <span className="text-xs text-slate-500 font-mono">#{meme.id}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     );
                                 })}
                             </div>
                         )}
                     </main>
+
+                    {/* Floating Action Bar */}
                     {!hasVoted && (
-                        <div className="fixed bottom-6 left-0 w-full flex justify-center px-4 pointer-events-none z-50">
-                            <button onClick={handleSubmit} disabled={selectedIds.length === 0} className={`pointer-events-auto shadow-2xl px-8 py-3 rounded-full font-bold text-lg flex items-center gap-2 transition-all transform ${selectedIds.length > 0 ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white scale-100' : 'bg-slate-700 text-slate-500 scale-95'}`}>
-                                {selectedIds.length > 0 ? `投出 ${selectedIds.length} 票` : '請選擇圖片'}
-                            </button>
+                        <div className="fixed bottom-0 left-0 w-full p-4 pointer-events-none z-50 bg-gradient-to-t from-slate-900 via-slate-900/90 to-transparent pt-10">
+                            <div className="max-w-md mx-auto pointer-events-auto flex items-center justify-between bg-slate-800/90 backdrop-blur-md border border-slate-700 rounded-full p-2 pl-6 shadow-2xl shadow-black/50">
+                                <div className="text-sm">
+                                    <span className="text-slate-400">已選擇 </span>
+                                    <span className={`font-bold text-lg ${selectedIds.length === MAX_VOTES ? 'text-pink-400' : 'text-white'}`}>{selectedIds.length}</span>
+                                    <span className="text-slate-500"> / {MAX_VOTES}</span>
+                                </div>
+                                <button 
+                                    onClick={handleSubmit} 
+                                    disabled={selectedIds.length === 0 || isSubmitting} 
+                                    className={`
+                                        px-8 py-3 rounded-full font-bold text-sm flex items-center gap-2 transition-all transform
+                                        ${selectedIds.length > 0 
+                                            ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg hover:shadow-pink-500/25 hover:scale-105 active:scale-95' 
+                                            : 'bg-slate-700 text-slate-500 cursor-not-allowed'}
+                                    `}
+                                >
+                                    {isSubmitting ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-paper-plane"></i>}
+                                    {isSubmitting ? '處理中...' : '送出投票'}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
