@@ -3,381 +3,299 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2025 資優班年度梗圖大賞</title>
+    <title>2025 資優班年度梗圖大賞 - 雲端連線版</title>
     
-    <!-- Tailwind CSS -->
+    <!-- CSS 與 核心庫 -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- Font Awesome (Icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        body { background-color: #0f172a; color: white; margin: 0; font-family: system-ui, -apple-system, sans-serif; }
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body { background-color: #0f172a; color: white; margin: 0; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
-        .card-selected { transform: scale(0.98); box-shadow: 0 0 0 4px #ec4899; }
-        
+        .card-selected { transform: scale(0.96); box-shadow: 0 0 0 4px #ec4899; z-index: 10; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body>
 
     <div id="root"></div>
 
-    <!-- Firebase 核心 (Modular SDK v11) -->
+    <!-- Firebase 模組化導入 (v11) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 將 Firebase 函式掛載到全域變數
-        window.Firebase = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp };
+        // 將 SDK 掛載到 window 物件
+        window.FirebaseSDK = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp, getDocs };
     </script>
 
     <script type="text/babel">
-        // ==========================================
-        //  設定與資料
-        // ==========================================
+        // ============================================================
+        // 1. 【核心設定區】已填入您的專案資訊
+        // ============================================================
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDe-m-4ZQY5ygJWpC3Q7itoWHPs4uzbadY",
+            authDomain: "happy-a79dd.firebaseapp.com",
+            projectId: "happy-a79dd",
+            storageBucket: "happy-a79dd.firebasestorage.app",
+            messagingSenderId: "430340297828",
+            appId: "1:430340297828:web:4995ea27ea30bfadb3fb71"
+        };
+        // ============================================================
+
+        const { useState, useEffect, useMemo, useCallback } = React;
 
         const PHOTO_LINKS = [
-            "https://drive.google.com/file/d/1mCnYb4S1kuTe1B7YUoq6ArURQTe5qd1g/view?usp=sharing",
-            "https://drive.google.com/file/d/1dUWWSVf9Onp0lLJrK07z1-dPE84vsOgj/view?usp=sharing",
-            "https://drive.google.com/file/d/1BbNht3rZ9FKvth96cOnmi765_yJ5gybJ/view?usp=sharing",
-            "https://drive.google.com/file/d/1dNKWF1iqWGLNdQ5N8VHZbLC3SPKasD5S/view?usp=sharing",
-            "https://drive.google.com/file/d/1BLogX7zHBvVKrYMS_wUbvXFS67oZ2RXy/view?usp=sharing",
-            "https://drive.google.com/file/d/1Mst0-I1migSLI7EiSP1yHcRuCwc9z60R/view?usp=sharing",
-            "https://drive.google.com/file/d/1ElsbKhTpNYvCm3o7bap4YAvhFMHZFXPR/view?usp=sharing",
-            "https://drive.google.com/file/d/18yrSvjmGavaT026VooDxToRkYG6LmaLK/view?usp=sharing",
-            "https://drive.google.com/file/d/1T24-fFroOs0cMfrj84S4i_oyu_LYbq7D/view?usp=sharing",
-            "https://drive.google.com/file/d/1ZDpt6MguJUsax-UY34wIArflSnkf-Snf/view?usp=sharing",
-            "https://drive.google.com/file/d/1G2jFPTQy9ehestEUquxi-Gh-7QH1HLpr/view?usp=sharing",
-            "https://drive.google.com/file/d/1TWy8a0fh1iLhfJNX_SseRCNu95Az3Lze/view?usp=sharing",
-            "https://drive.google.com/file/d/1HLG4OMUGsekOh2zeT6q2WprVgQR49qIi/view?usp=sharing",
-            "https://drive.google.com/file/d/11WdXaj3aHuBmBdpPoZPUjGCZ7iqU0rbk/view?usp=sharing",
-            "https://drive.google.com/file/d/1kPUe3rn46E7Z5tiQCFIa_B_8-7AsPOZo/view?usp=sharing",
-            "https://drive.google.com/file/d/1nQBOYzNB-eA6puPgP4Ne4eeA28hNa3Nw/view?usp=sharing",
-            "https://drive.google.com/file/d/1h0NYurvyYIiAI-c1Miow7ivHp1sqIx1n/view?usp=sharing",
-            "https://drive.google.com/file/d/1H_xn29OOViYdBe3hcLiYZ7rHC4x9NmPL/view?usp=sharing",
-            "https://drive.google.com/file/d/1TBHFXkqX-YromuzZmX4qi_ZknZGffkho/view?usp=sharing",
-            "https://drive.google.com/file/d/16yJigA7wsXiSZMzfQZeQfVHJ2XHqyhHh/view?usp=sharing",
-            "https://drive.google.com/file/d/1WRfnA28hye0n0HIWkE07QcwytGtIJJqP/view?usp=sharing",
-            "https://drive.google.com/file/d/1V9twJ6qYvXqrxm06fFOzf95wrVTAKVyu/view?usp=sharing",
-            "https://drive.google.com/file/d/10L1LiOaqby0gv-ZPG54FzlRQrWm7p4HZ/view?usp=sharing",
-            "https://drive.google.com/file/d/1uUlUJgiaBMQV_zcmbmHj_pkw4pwZbZc2/view?usp=sharing",
-            "https://drive.google.com/file/d/1ThfQ7RZFZ-pPOCmBj-xOcOFWCA0ExqHe/view?usp=sharing",
-            "https://drive.google.com/file/d/1yYb-EQtskGIuYxkEVtH_tU5728oOUHtp/view?usp=sharing",
-            "https://drive.google.com/file/d/1j1oIBZI0nisgptAkQnMA08hI5rd5M0ng/view?usp=sharing",
-            "https://drive.google.com/file/d/1fiNbYcCASKrC6IiWex0Kty1qK1nfoEO2/view?usp=sharing",
-            "https://drive.google.com/file/d/1-r0RAZN2EnR41URD0nAsA3J56PoAJloP/view?usp=sharing",
-            "https://drive.google.com/file/d/16Lryo_Z_HmCfqTt3LYDhSDycgQIQa_RC/view?usp=sharing",
-            "https://drive.google.com/file/d/1Zfj2HuXdAHPg8ceGFpeZcJVig4JoRnQ3/view?usp=sharing",
-            "https://drive.google.com/file/d/1kw2QmHHWShZWUsYWPvytgAJiAvUPVfT4/view?usp=sharing",
-            "https://drive.google.com/file/d/1aLnnu9rdz4P42Fjgv-vsJliX8TssskQR/view?usp=sharing",
-            "https://drive.google.com/file/d/1YbR0Qe6SlJhWhrDEjr0wAPai4bVWe0NK/view?usp=sharing",
-            "https://drive.google.com/file/d/1fyaFdn67r5c8YuSmLk63Tjl1B4OdzXtV/view?usp=sharing",
-            "https://drive.google.com/file/d/1qiCwGZi3Q5YorHVKGg_tZ44NHiSN2jsf/view?usp=sharing",
-            "https://drive.google.com/file/d/1RE_Np5Jn-rsgOume1o2sD1sMuPb8OCTo/view?usp=sharing",
-            "https://drive.google.com/file/d/1Roz3oj4hGT5YN5F_GbbSTYa5IGqxDaQM/view?usp=sharing"
+            "1mCnYb4S1kuTe1B7YUoq6ArURQTe5qd1g", "1dUWWSVf9Onp0lLJrK07z1-dPE84vsOgj", "1BbNht3rZ9FKvth96cOnmi765_yJ5gybJ",
+            "1dNKWF1iqWGLNdQ5N8VHZbLC3SPKasD5S", "1BLogX7zHBvVKrYMS_wUbvXFS67oZ2RXy", "1Mst0-I1migSLI7EiSP1yHcRuCwc9z60R",
+            "1ElsbKhTpNYvCm3o7bap4YAvhFMHZFXPR", "18yrSvjmGavaT026VooDxToRkYG6LmaLK", "1T24-fFroOs0cMfrj84S4i_oyu_LYbq7D",
+            "1ZDpt6MguJUsax-UY34wIArflSnkf-Snf", "1G2jFPTQy9ehestEUquxi-Gh-7QH1HLpr", "1TWy8a0fh1iLhfJNX_SseRCNu95Az3Lze",
+            "1HLG4OMUGsekOh2zeT6q2WprVgQR49qIi", "11WdXaj3aHuBmBdpPoZPUjGCZ7iqU0rbk", "1kPUe3rn46E7Z5tiQCFIa_B_8-7AsPOZo",
+            "1nQBOYzNB-eA6puPgP4Ne4eeA28hNa3Nw", "1h0NYurvyYIiAI-c1Miow7ivHp1sqIx1n", "1H_xn29OOViYdBe3hcLiYZ7rHC4x9NmPL",
+            "1TBHFXkqX-YromuzZmX4qi_ZknZGffkho", "16yJigA7wsXiSZMzfQZeQfVHJ2XHqyhHh", "1WRfnA28hye0n0HIWkE07QcwytGtIJJqP",
+            "1V9twJ6qYvXqrxm06fFOzf95wrVTAKVyu", "10L1LiOaqby0gv-ZPG54FzlRQrWm7p4HZ", "1uUlUJgiaBMQV_zcmbmHj_pkw4pwZbZc2",
+            "1ThfQ7RZFZ-pPOCmBj-xOcOFWCA0ExqHe", "1yYb-EQtskGIuYxkEVtH_tU5728oOUHtp", "1j1oIBZI0nisgptAkQnMA08hI5rd5M0ng",
+            "1fiNbYcCASKrC6IiWex0Kty1qK1nfoEO2", "1-r0RAZN2EnR41URD0nAsA3J56PoAJloP", "16Lryo_Z_HmCfqTt3LYDhSDycgQIQa_RC",
+            "1Zfj2HuXdAHPg8ceGFpeZcJVig4JoRnQ3", "1kw2QmHHWShZWUsYWPvytgAJiAvUPVfT4", "1aLnnu9rdz4P42Fjgv-vsJliX8TssskQR",
+            "1YbR0Qe6SlJhWhrDEjr0wAPai4bVWe0NK", "1fyaFdn67r5c8YuSmLk63Tjl1B4OdzXtV", "1qiCwGZi3Q5YorHVKGg_tZ44NHiSN2jsf",
+            "1RE_Np5Jn-rsgOume1o2sD1sMuPb8OCTo", "1Roz3oj4hGT5YN5F_GbbSTYa5IGqxDaQM"
         ];
 
-        const getSmartImageUrl = (input) => {
-            if (!input) return null;
-            input = input.trim();
-            if (!input.includes('drive.google.com')) return input;
-            const idMatch = input.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (idMatch && idMatch[1]) return `https://lh3.googleusercontent.com/d/${idMatch[1]}=s800`;
-            return input; 
-        };
-
-        const MEME_DATA = PHOTO_LINKS.map((link, i) => ({
+        const MEME_DATA = PHOTO_LINKS.map((id, i) => ({
             id: i + 1,
-            url: getSmartImageUrl(link),
+            url: `https://lh3.googleusercontent.com/d/${id}=s800`,
             bgColor: `hsl(${(i * 137) % 360}, 60%, 20%)`,
             title: `年度梗圖 #${i + 1}`,
         }));
 
-        const { useState, useEffect, useMemo } = React;
-
-        // ==========================================
-        //  排行榜組件
-        // ==========================================
-        const ResultsView = ({ votes, onBack, isCloudMode }) => {
+        // 排行榜
+        const ResultsView = ({ votes, onBack, cloudStatus }) => {
             const sortedMemes = useMemo(() => {
                 const counts = {};
                 MEME_DATA.forEach(m => counts[m.id] = 0);
-                Object.values(votes).forEach(voteList => {
-                    if (Array.isArray(voteList)) {
-                        voteList.forEach(id => {
-                            if (counts[id] !== undefined) counts[id]++;
-                        });
-                    }
+                Object.values(votes).forEach(choices => {
+                    if (Array.isArray(choices)) choices.forEach(id => { if(counts[id] !== undefined) counts[id]++; });
                 });
                 return MEME_DATA.map(m => ({ ...m, count: counts[m.id] }))
                     .sort((a, b) => b.count - a.count || a.id - b.id);
             }, [votes]);
 
-            const totalVotes = Object.keys(votes).length;
-            const maxVotes = sortedMemes.length > 0 ? sortedMemes[0].count : 1;
+            const maxVotes = Math.max(...sortedMemes.map(m => m.count), 1);
 
             return (
-                <div className="min-h-screen bg-slate-900 pt-20 px-4 pb-20 animate-fade-in">
-                    <div className="max-w-3xl mx-auto">
-                        <div className="flex items-center justify-between mb-8">
-                            <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-white transition px-4 py-2 rounded-full hover:bg-slate-800">
+                <div className="min-h-screen bg-slate-900 pt-16 px-4 pb-20 animate-fade-in">
+                    <div className="max-w-2xl mx-auto">
+                        <div className="flex justify-between items-center mb-8">
+                            <button onClick={onBack} className="text-slate-400 hover:text-white flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 transition">
                                 <i className="fas fa-arrow-left"></i> 返回投票
                             </button>
-                            <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
-                                <div className={`w-2.5 h-2.5 rounded-full ${isCloudMode ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
-                                <span className="text-xs text-slate-300 font-medium">{isCloudMode ? '即時連線中' : '單機演示模式'}</span>
+                            <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700">
+                                <div className={`w-2.5 h-2.5 rounded-full ${cloudStatus === 'online' ? 'bg-green-500 animate-pulse' : 'bg-orange-500'}`}></div>
+                                <span className="text-xs font-medium text-slate-300">{cloudStatus === 'online' ? '雲端數據已同步' : '連線不穩'}</span>
                             </div>
                         </div>
-                        <div className="text-center mb-10">
-                            <h2 className="text-4xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500 tracking-tight">🏆 即時戰況排行榜</h2>
-                            <p className="text-slate-400">目前總投票人數：<span className="text-white font-bold">{totalVotes}</span> 人</p>
-                        </div>
-                        <div className="grid gap-3">
-                            {sortedMemes.map((meme, index) => {
-                                let rankStyle = "bg-slate-700 text-slate-400";
-                                let rankIcon = null;
-                                if (index === 0) { rankStyle = "bg-gradient-to-br from-yellow-300 to-yellow-600 text-yellow-900"; rankIcon = "👑"; }
-                                else if (index === 1) { rankStyle = "bg-gradient-to-br from-slate-200 to-slate-400 text-slate-800"; }
-                                else if (index === 2) { rankStyle = "bg-gradient-to-br from-orange-300 to-orange-600 text-orange-900"; }
-                                const barWidth = Math.max((meme.count / (maxVotes || 1)) * 100, 0);
-                                return (
-                                    <div key={meme.id} className="relative bg-slate-800/80 border border-slate-700/50 rounded-xl p-3 flex items-center gap-4 overflow-hidden group hover:border-slate-600 transition-colors">
-                                        <div className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-indigo-600/10 to-purple-600/20 transition-all duration-1000 ease-out" style={{ width: `${barWidth}%` }}></div>
-                                        <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg font-black text-lg shadow-lg z-10 ${rankStyle}`}>{rankIcon || index + 1}</div>
-                                        <div className="w-16 h-12 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700/50 z-10">
-                                            {meme.url ? <img src={meme.url} className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full" style={{backgroundColor: meme.bgColor}}></div>}
-                                        </div>
-                                        <div className="flex-1 min-w-0 z-10">
-                                            <h3 className="font-bold truncate text-slate-100">{meme.title}</h3>
-                                            <p className="text-xs text-slate-500 font-mono">ID: #{meme.id}</p>
-                                        </div>
-                                        <div className="text-right z-10 min-w-[3rem]">
-                                            <span className="text-2xl font-black text-white">{meme.count}</span>
-                                            <span className="text-xs text-slate-500 ml-1 block -mt-1">票</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        <h2 className="text-3xl font-black text-center mb-10 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500">🏆 投票即時戰況</h2>
+                        <div className="space-y-3">
+                            {sortedMemes.map((m, i) => (
+                                <div key={m.id} className="relative glass-panel rounded-2xl p-4 flex items-center gap-4 overflow-hidden border-white/5 shadow-2xl">
+                                    <div className="absolute left-0 top-0 bottom-0 bg-pink-500/10 transition-all duration-1000 ease-out" style={{width: `${(m.count/maxVotes)*100}%`}}></div>
+                                    <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg font-black text-lg ${i === 0 ? 'bg-yellow-500 text-yellow-950 shadow-[0_0_15px_rgba(234,179,8,0.4)]' : i === 1 ? 'bg-slate-300 text-slate-950' : i === 2 ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>{i + 1}</div>
+                                    <div className="w-14 h-11 rounded bg-slate-900 overflow-hidden flex-shrink-0 z-10 border border-white/10"><img src={m.url} className="w-full h-full object-cover" /></div>
+                                    <div className="flex-1 font-bold truncate z-10 text-slate-100">{m.title}</div>
+                                    <div className="text-right z-10"><span className="text-2xl font-black text-white">{m.count}</span><span className="text-xs text-slate-500 ml-1">票</span></div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
             );
         };
 
-        // ==========================================
-        //  圖片預覽 Lightbox
-        // ==========================================
-        const Lightbox = ({ meme, onClose }) => {
-            if (!meme) return null;
-            return (
-                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
-                    <button className="absolute top-4 right-4 w-10 h-10 bg-slate-800 rounded-full text-white hover:bg-slate-700 transition flex items-center justify-center">
-                        <i className="fas fa-times"></i>
-                    </button>
-                    <div className="max-w-4xl w-full max-h-[90vh] flex flex-col items-center" onClick={e => e.stopPropagation()}>
-                        <img src={meme.url} className="max-w-full max-h-[80vh] rounded-lg shadow-2xl" />
-                        <h3 className="mt-4 text-xl font-bold text-white">{meme.title}</h3>
-                    </div>
-                </div>
-            );
-        };
-
-        // ==========================================
-        //  主應用
-        // ==========================================
         function App() {
             const [selectedIds, setSelectedIds] = useState([]);
             const [hasVoted, setHasVoted] = useState(false);
             const [viewResults, setViewResults] = useState(false);
             const [allVotes, setAllVotes] = useState({});
-            const [isCloudMode, setIsCloudMode] = useState(false);
+            const [cloudStatus, setCloudStatus] = useState('connecting');
             const [user, setUser] = useState(null);
-            const [previewMeme, setPreviewMeme] = useState(null);
             const [isSubmitting, setIsSubmitting] = useState(false);
             const MAX_VOTES = 3;
 
             // 初始化 Firebase
             useEffect(() => {
-                const initFirebase = async () => {
-                    // Firebase 設定
-                    const config = {
-                        apiKey: "AIzaSyDe-m-4ZQY5ygJWpC3Q7itoWHPs4uzbadY",
-                        authDomain: "happy-a79dd.firebaseapp.com",
-                        projectId: "happy-a79dd",
-                        storageBucket: "happy-a79dd.firebasestorage.app",
-                        messagingSenderId: "430340297828",
-                        appId: "1:430340297828:web:4995ea27ea30bfadb3fb71"
-                    };
+                let unsubscribe = null;
+                const init = async () => {
+                    if (!window.FirebaseSDK) return;
+                    const { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, getFirestore, collection, onSnapshot } = window.FirebaseSDK;
+                    
+                    try {
+                        const app = initializeApp(FIREBASE_CONFIG);
+                        const auth = getAuth(app);
+                        const db = getFirestore(app);
 
-                    // 檢查 window.Firebase 是否已載入 (由 module script 提供)
-                    const checkFirebase = setInterval(async () => {
-                        if (window.Firebase && window.Firebase.initializeApp) {
-                            clearInterval(checkFirebase);
-                            try {
-                                const app = window.Firebase.initializeApp(config);
-                                const auth = window.Firebase.getAuth(app);
-                                const db = window.Firebase.getFirestore(app);
+                        await signInAnonymously(auth);
+
+                        onAuthStateChanged(auth, (u) => {
+                            if (u) {
+                                setUser(u);
+                                setCloudStatus('online');
+                                const votesRef = collection(db, 'artifacts', 'meme-vote-2025', 'public', 'data', 'meme_votes');
                                 
-                                // 嘗試匿名登入 (必須在 Console 開啟匿名登入功能)
-                                await window.Firebase.signInAnonymously(auth);
-
-                                window.Firebase.onAuthStateChanged(auth, (u) => {
-                                    if (u) {
-                                        setUser(u);
-                                        setIsCloudMode(true);
-                                        // 監聽投票數據
-                                        const votesRef = window.Firebase.collection(db, 'artifacts', 'meme-vote-2025', 'public', 'data', 'meme_votes');
-                                        
-                                        window.Firebase.onSnapshot(votesRef, (snapshot) => {
-                                            const newVotes = {};
-                                            snapshot.forEach(doc => newVotes[doc.id] = doc.data().choices);
-                                            setAllVotes(newVotes);
-                                            // 檢查目前使用者是否投過
-                                            if (newVotes[u.uid]) {
-                                                setHasVoted(true);
-                                                setSelectedIds(newVotes[u.uid]);
-                                            }
-                                        }, (err) => {
-                                            console.error("Firestore Error:", err);
-                                            fallbackToLocal();
-                                        });
+                                // 即時監聽：這確保了手機跟電腦會看到同樣的數據
+                                unsubscribe = onSnapshot(votesRef, (snapshot) => {
+                                    const data = {};
+                                    snapshot.forEach(doc => data[doc.id] = doc.data().choices);
+                                    setAllVotes(data);
+                                    // 檢查此裝置是否投過
+                                    if (data[u.uid]) {
+                                        setHasVoted(true);
+                                        setSelectedIds(data[u.uid]);
                                     }
+                                }, (err) => {
+                                    console.error("Firestore Error:", err);
+                                    setCloudStatus('offline');
                                 });
-                            } catch (e) {
-                                console.error("Firebase Auth/Init Failed:", e);
-                                fallbackToLocal();
                             }
-                        }
-                    }, 100);
-
-                    // 5秒後如果還沒連上，進入備援模式
-                    setTimeout(() => {
-                        clearInterval(checkFirebase);
-                        if (!isCloudMode) fallbackToLocal();
-                    }, 5000);
-                };
-
-                const fallbackToLocal = () => {
-                    setIsCloudMode(false);
-                    const savedVotes = JSON.parse(localStorage.getItem('local_votes_2025') || '{}');
-                    setAllVotes(savedVotes);
-                    const localUserId = localStorage.getItem('local_user_id') || `user_${Math.random().toString(36).substr(2,9)}`;
-                    localStorage.setItem('local_user_id', localUserId);
-                    setUser({ uid: localUserId, isAnonymous: true });
-                    if (savedVotes[localUserId]) {
-                        setHasVoted(true);
-                        setSelectedIds(savedVotes[localUserId]);
+                        });
+                    } catch (e) {
+                        setCloudStatus('offline');
+                        const saved = JSON.parse(localStorage.getItem('local_votes_backup') || '{}');
+                        setAllVotes(saved);
                     }
                 };
-
-                initFirebase();
+                init();
+                return () => unsubscribe && unsubscribe();
             }, []);
 
-            const toggleSelection = (id) => {
+            const toggle = (id) => {
                 if (hasVoted) return;
-                if (selectedIds.includes(id)) setSelectedIds(prev => prev.filter(itemId => itemId !== id));
-                else { if (selectedIds.length < MAX_VOTES) setSelectedIds(prev => [...prev, id]); }
+                if (selectedIds.includes(id)) setSelectedIds(prev => prev.filter(i => i !== id));
+                else if (selectedIds.length < MAX_VOTES) setSelectedIds(prev => [...prev, id]);
             };
 
-            const handleSubmit = async () => {
-                if (selectedIds.length === 0 || !user) return;
+            const submit = async () => {
+                if (selectedIds.length === 0 || isSubmitting) return;
                 setIsSubmitting(true);
                 try {
-                    if (isCloudMode) {
-                        const db = window.Firebase.getFirestore();
-                        await window.Firebase.setDoc(window.Firebase.doc(db, 'artifacts', 'meme-vote-2025', 'public', 'data', 'meme_votes', user.uid), {
+                    if (cloudStatus === 'online') {
+                        const { getFirestore, doc, setDoc, serverTimestamp } = window.FirebaseSDK;
+                        const db = getFirestore();
+                        await setDoc(doc(db, 'artifacts', 'meme-vote-2025', 'public', 'data', 'meme_votes', user.uid), {
                             choices: selectedIds,
-                            timestamp: window.Firebase.serverTimestamp(),
-                            device: navigator.userAgent
+                            timestamp: serverTimestamp(),
+                            device: navigator.userAgent,
+                            platform: 'web'
                         });
                     } else {
-                        const currentVotes = JSON.parse(localStorage.getItem('local_votes_2025') || '{}');
-                        currentVotes[user.uid] = selectedIds;
-                        localStorage.setItem('local_votes_2025', JSON.stringify(currentVotes));
-                        setAllVotes(currentVotes);
-                        setHasVoted(true);
+                        // 離線備份
+                        const local = JSON.parse(localStorage.getItem('local_votes_backup') || '{}');
+                        local[user?.uid || 'offline_user'] = selectedIds;
+                        localStorage.setItem('local_votes_backup', JSON.stringify(local));
                     }
-                    setTimeout(() => { setHasVoted(true); setIsSubmitting(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }, 500);
+                    setHasVoted(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 } catch (e) {
-                    alert("投票失敗: " + e.message);
+                    alert("投票傳輸失敗，請確定您在 Firebase Console 已開啟「匿名登入」且「資料庫規則」已發布成功。\n\n詳細錯誤：" + e.message);
+                } finally {
                     setIsSubmitting(false);
                 }
             };
 
-            if (viewResults) return <ResultsView votes={allVotes} onBack={() => setViewResults(false)} isCloudMode={isCloudMode} />;
+            if (viewResults) return <ResultsView votes={allVotes} onBack={() => setViewResults(false)} cloudStatus={cloudStatus} />;
 
             return (
                 <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-pink-500 selection:text-white">
-                    <Lightbox meme={previewMeme} onClose={() => setPreviewMeme(null)} />
-                    <header className="relative pt-12 pb-8 px-4 text-center overflow-hidden">
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none"></div>
-                        <div className="relative z-10 max-w-7xl mx-auto">
-                             <div className="flex justify-between items-start absolute top-0 w-full px-2">
-                                 <button onClick={() => { if(confirm('重置？')) { localStorage.clear(); window.location.reload(); }}} className="text-xs text-slate-700 hover:text-red-500 transition px-2 py-1">重置</button>
-                                 <button onClick={() => setViewResults(true)} className="glass-panel text-yellow-400 text-sm px-4 py-2 rounded-full hover:bg-slate-800 transition flex items-center gap-2 group"><i className="fas fa-chart-bar group-hover:scale-110 transition-transform"></i> 即時戰況</button>
+                    <header className="pt-14 pb-8 px-4 text-center relative overflow-hidden">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-64 bg-gradient-to-b from-pink-600/20 to-transparent blur-[100px] pointer-events-none"></div>
+                        <div className="max-w-4xl mx-auto relative z-10">
+                            <div className="flex justify-between items-center absolute -top-8 w-full px-2">
+                                <button onClick={() => { if(confirm('重置所有資料？')) { localStorage.clear(); location.reload(); }}} className="text-[10px] text-slate-700 hover:text-red-500 transition font-mono uppercase tracking-tighter">System Reset</button>
+                                <button onClick={() => setViewResults(true)} className="glass-panel text-yellow-400 text-xs px-4 py-2 rounded-full hover:bg-slate-800 transition flex items-center gap-2 shadow-lg">
+                                    <i className="fas fa-chart-bar"></i> 實時戰況
+                                </button>
                             </div>
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-pink-400 text-xs font-bold tracking-wider mb-4 shadow-lg backdrop-blur-sm"><i className="fas fa-sparkles"></i> 2025 NEW YEAR SPECIAL</div>
-                            <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 drop-shadow-sm">資優班梗圖大賞</h1>
-                            <p className="text-slate-400 max-w-lg mx-auto leading-relaxed">每人僅有 <span className="text-white font-bold">3 票</span>，選出你心中的年度經典！</p>
-                            <div className="mt-4 flex justify-center gap-2 text-xs text-slate-500 font-mono"><span className={isCloudMode ? "text-green-500" : "text-orange-500"}>● {isCloudMode ? 'ONLINE' : 'OFFLINE'}</span><span>|</span><span>ID: {user ? user.uid.slice(0, 6) : '...'}</span></div>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-pink-400 text-[10px] font-black tracking-widest mb-6">
+                                <i className="fas fa-bolt animate-pulse"></i> 2025 NEW YEAR SPECIAL
+                            </div>
+                            <h1 className="text-4xl md:text-6xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-br from-white via-white to-slate-500 tracking-tight">資優班梗圖大賞</h1>
+                            <p className="text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
+                                每一票都是對創作者的肯定。<br/>
+                                每人限投 <span className="text-pink-400 font-bold underline decoration-2 underline-offset-4">3 票</span>。
+                            </p>
+                            <div className="mt-6 flex justify-center items-center gap-3 text-[10px] text-slate-500 font-mono bg-slate-800/30 w-fit mx-auto px-4 py-1.5 rounded-full border border-white/5">
+                                <span className="flex items-center gap-1.5">
+                                    <i className={`fas fa-circle text-[6px] ${cloudStatus === 'online' ? 'text-green-500 animate-pulse' : 'text-orange-500'}`}></i>
+                                    {cloudStatus.toUpperCase()}
+                                </span>
+                                <span className="text-slate-700">|</span>
+                                <span>UID: {user ? user.uid.slice(0, 12) : 'AUTH_PENDING'}</span>
+                            </div>
                         </div>
                     </header>
-                    <main className="max-w-7xl mx-auto px-4 pb-32">
+
+                    <main className="max-w-7xl mx-auto px-4 pb-40 animate-fade-in">
                         {hasVoted ? (
-                            <div className="max-w-lg mx-auto glass-panel rounded-3xl p-10 text-center mt-8 animate-fade-in border-t border-white/10">
-                                <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center text-4xl mx-auto mb-6"><i className="fas fa-check"></i></div>
-                                <h2 className="text-3xl font-bold mb-3">投票成功！</h2><p className="text-slate-400 mb-8">感謝您的參與，投票結果已同步至雲端。</p>
-                                <button onClick={() => setViewResults(true)} className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 rounded-xl font-bold transition shadow-lg shadow-purple-900/20 flex items-center justify-center gap-2"><i className="fas fa-poll"></i> 查看目前排名</button>
+                            <div className="max-w-md mx-auto glass-panel rounded-3xl p-10 text-center mt-10 border-white/10 shadow-2xl">
+                                <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.2)]"><i className="fas fa-check-double"></i></div>
+                                <h2 className="text-2xl font-bold mb-3">投票已成功傳輸！</h2>
+                                <p className="text-slate-400 text-sm mb-10 leading-relaxed">您的選擇已記錄在雲端資料庫中。<br/>請點擊下方按鈕觀看所有人的投票結果。</p>
+                                <button onClick={() => setViewResults(true)} className="w-full py-4 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 rounded-2xl font-black shadow-xl transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3">
+                                    <i className="fas fa-trophy"></i> 觀看即時排行榜
+                                </button>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 md:gap-5">
                                 {MEME_DATA.map((meme) => {
                                     const isSelected = selectedIds.includes(meme.id);
-                                    const isMaxReached = selectedIds.length >= MAX_VOTES && !isSelected;
+                                    const isLocked = selectedIds.length >= MAX_VOTES && !isSelected;
                                     return (
-                                        <div key={meme.id} className={`relative group rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ${isSelected ? 'card-selected ring-4 ring-pink-500 z-10' : 'card-hover border border-slate-700/50 hover:border-slate-500'} ${isMaxReached ? 'opacity-50 grayscale hover:grayscale-0 hover:opacity-100' : 'opacity-100'} bg-slate-800`} onClick={() => toggleSelection(meme.id)}>
-                                            <div className="aspect-[4/3] bg-slate-900 relative overflow-hidden">
-                                                {meme.url ? <img src={meme.url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-slate-600 font-bold text-2xl" style={{backgroundColor: meme.bgColor}}>#{meme.id}</div>}
-                                                <div className={`absolute inset-0 bg-pink-500/20 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px] ${isSelected ? 'opacity-100' : 'opacity-0'}`}><div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-pink-600 shadow-xl transform scale-100 animate-bounce"><i className="fas fa-check text-xl"></i></div></div>
-                                                <button onClick={(e) => { e.stopPropagation(); setPreviewMeme(meme); }} className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/80 rounded-full text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"><i className="fas fa-expand-alt text-xs"></i></button>
+                                        <div key={meme.id} 
+                                            className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 group ${isSelected ? 'card-selected' : 'border border-white/5 hover:border-white/20'} ${isLocked ? 'opacity-30 grayscale' : 'opacity-100 shadow-lg'}`}
+                                            onClick={() => toggle(meme.id)}>
+                                            <div className="aspect-[4/3] bg-slate-950 relative overflow-hidden">
+                                                <img src={meme.url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                                                {isSelected && (
+                                                    <div className="absolute inset-0 bg-pink-600/40 flex items-center justify-center backdrop-blur-[2px]">
+                                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-pink-600 shadow-2xl animate-bounce">
+                                                            <i className="fas fa-check text-xl"></i>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-mono font-bold border border-white/10">#{String(meme.id).padStart(2,'0')}</div>
                                             </div>
-                                            <div className={`p-3 transition-colors ${isSelected ? 'bg-pink-900/30' : 'bg-slate-800'}`}><div className="flex justify-between items-center"><span className="font-bold text-slate-200 text-sm truncate">{meme.title}</span><span className="text-xs text-slate-500 font-mono">#{meme.id}</span></div></div>
+                                            <div className={`p-2.5 text-center text-[10px] font-bold tracking-wider ${isSelected ? 'bg-pink-900/50 text-white' : 'bg-slate-800/80 text-slate-400'}`}>
+                                                {isSelected ? 'SELECTED FOR 2025' : 'CLICK TO VOTE'}
+                                            </div>
                                         </div>
                                     );
                                 })}
                             </div>
                         )}
                     </main>
+
                     {!hasVoted && (
-                        <div className="fixed bottom-0 left-0 w-full p-4 pointer-events-none z-50 bg-gradient-to-t from-slate-900 via-slate-900/90 to-transparent pt-10">
-                            <div className="max-w-md mx-auto pointer-events-auto flex items-center justify-between bg-slate-800/90 backdrop-blur-md border border-slate-700 rounded-full p-2 pl-6 shadow-2xl shadow-black/50">
-                                <div className="text-sm"><span className="text-slate-400">已選擇 </span><span className={`font-bold text-lg ${selectedIds.length === MAX_VOTES ? 'text-pink-400' : 'text-white'}`}>{selectedIds.length}</span><span className="text-slate-500"> / {MAX_VOTES}</span></div>
-                                <button onClick={handleSubmit} disabled={selectedIds.length === 0 || isSubmitting} className={`px-8 py-3 rounded-full font-bold text-sm flex items-center gap-2 transition-all transform ${selectedIds.length > 0 ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg hover:shadow-pink-500/25 hover:scale-105 active:scale-95' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}>{isSubmitting ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-paper-plane"></i>} {isSubmitting ? '傳輸中...' : '送出投票'}</button>
+                        <div className="fixed bottom-0 left-0 w-full p-6 flex justify-center z-50 pointer-events-none bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent pt-20">
+                            <div className="max-w-sm w-full pointer-events-auto">
+                                <button onClick={submit} disabled={selectedIds.length === 0 || isSubmitting} 
+                                    className={`w-full py-4 rounded-2xl font-black text-lg shadow-2xl flex items-center justify-center gap-3 transition-all transform active:scale-95 ${selectedIds.length > 0 ? 'bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 text-white scale-105' : 'bg-slate-800 text-slate-500 opacity-80 cursor-not-allowed border border-white/5'}`}>
+                                    {isSubmitting ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-paper-plane"></i>}
+                                    {isSubmitting ? '正在傳輸數據...' : selectedIds.length === 0 ? '請選擇梗圖' : `送出 ${selectedIds.length} 張選票`}
+                                </button>
+                                <p className="text-[10px] text-center text-slate-500 mt-3 font-medium uppercase tracking-widest">Encrypted cloud voting system</p>
                             </div>
                         </div>
                     )}
                 </div>
             );
         }
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
