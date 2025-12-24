@@ -260,9 +260,85 @@
 
             const MAX_VOTES = 3;
 
-            // 初始化 Firebase
+             // 初始化 Firebase (手動設定版)
             useEffect(() => {
                 const initFirebase = async () => {
+                    // ▼▼▼ 請在此處貼上您的 Firebase 設定 ▼▼▼
+                    const myFirebaseConfig = {
+                        apiKey: "AIzaSyDe-m-4ZQY5ygJWpC3Q7itoWHPs4uzbadY",
+                        authDomain: "happy-a79dd.firebaseapp.com",
+  projectId: "happy-a79dd",
+  storageBucket: "happy-a79dd.firebasestorage.app",
+                      messagingSenderId: "430340297828",
+  appId: "1:430340297828:web:4995ea27ea30bfadb3fb71",
+                    };
+                    // ▲▲▲ 設定結束 ▲▲▲
+
+                    if (window.Firebase) {
+                        try {
+                            // 初始化 App (使用手動填入的設定)
+                            const app = window.Firebase.initializeApp(myFirebaseConfig);
+                            const auth = window.Firebase.getAuth(app);
+                            const db = window.Firebase.getFirestore(app);
+                            
+                            // 匿名登入
+                            await window.Firebase.signInAnonymously(auth);
+
+                            window.Firebase.onAuthStateChanged(auth, (u) => {
+                                if (u) {
+                                    setUser(u);
+                                    setIsCloudMode(true);
+                                    
+                                    // 設定監聽路徑 (App ID 設為固定值)
+                                    const appId = 'meme-vote-2025'; 
+                                    const votesRef = window.Firebase.collection(db, 'artifacts', appId, 'public', 'data', 'meme_votes');
+                                    
+                                    window.Firebase.onSnapshot(votesRef, (snapshot) => {
+                                        const newVotes = {};
+                                        snapshot.forEach(doc => {
+                                            newVotes[doc.id] = doc.data().choices;
+                                        });
+                                        setAllVotes(newVotes);
+                                        
+                                        if (newVotes[u.uid]) {
+                                            setHasVoted(true);
+                                            setSelectedIds(newVotes[u.uid]);
+                                        }
+                                    }, (error) => {
+                                        console.error("Firebase Read Error:", error);
+                                        fallbackToLocal();
+                                    });
+                                }
+                            });
+                        } catch (e) {
+                            console.error("Firebase 連線失敗:", e);
+                            fallbackToLocal();
+                        }
+                    } else {
+                        fallbackToLocal();
+                    }
+                };
+                
+                // 本機備援模式函式 (保持不變)
+                const fallbackToLocal = () => {
+                    console.warn("Using Local Mode");
+                    setIsCloudMode(false);
+                    const savedVotes = JSON.parse(localStorage.getItem('local_votes_2025') || '{}');
+                    setAllVotes(savedVotes);
+                    
+                    const localUserId = localStorage.getItem('local_user_id') || `user_${Math.random().toString(36).substr(2,9)}`;
+                    localStorage.setItem('local_user_id', localUserId);
+                    setUser({ uid: localUserId, isAnonymous: true });
+                    
+                    if (savedVotes[localUserId]) {
+                        setHasVoted(true);
+                        setSelectedIds(savedVotes[localUserId]);
+                    }
+                };
+
+                initFirebase();
+            }, []);
+
                     if (window.Firebase && typeof window.__firebase_config !== 'undefined') {
                         try {
                             const config = JSON.parse(window.__firebase_config);
