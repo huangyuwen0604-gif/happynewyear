@@ -95,7 +95,7 @@
                 e.preventDefault();
                 const cleanName = name.trim();
                 if (!cleanName) {
-                    setError("請輸入名字或座號");
+                    setError("請輸入班級及名字");
                     return;
                 }
                 if (cleanName.length < 2) {
@@ -111,8 +111,8 @@
                         <div className="mb-6 inline-block p-4 rounded-full bg-pink-500/10 text-pink-500">
                             <i className="fas fa-user-astronaut text-4xl"></i>
                         </div>
-                        <h2 className="text-2xl font-black text-white mb-2">歡迎來到梗圖大賞</h2>
-                        <p className="text-slate-400 mb-8 text-sm">請輸入您的班級及真實姓名以開始投票<br/>(每人僅限投票一次)</p>
+                        <h2 className="text-2xl font-black text-white mb-2">歡迎來到2025資優班梗圖大賞</h2>
+                        <p className="text-slate-400 mb-8 text-sm">請輸入您的班級及姓名以開始投票<br/>(每人僅限投票一次)</p>
                         
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="relative">
