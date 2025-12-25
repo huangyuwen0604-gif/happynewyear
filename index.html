@@ -151,7 +151,7 @@
             const handleSubmit = (e) => {
                 e.preventDefault();
                 const cleanName = name.trim();
-                if (!cleanName) { setError("請輸入名字或座號"); return; }
+                if (!cleanName) { setError("請輸入完整姓名"); return; }
                 if (cleanName.length < 2) { setError("名字太短囉"); return; }
                 onLogin(cleanName);
             };
@@ -161,7 +161,7 @@
                     <div className="max-w-md w-full glass-panel p-8 rounded-3xl shadow-2xl text-center border border-white/10">
                         <div className="mb-6 inline-block p-4 rounded-full bg-pink-500/10 text-pink-500"><i className="fas fa-user-astronaut text-4xl"></i></div>
                         <h2 className="text-2xl font-black text-white mb-2">歡迎來到梗圖大賞</h2>
-                        <p className="text-slate-400 mb-8 text-sm">請輸入您的真實姓名或座號以開始投票</p>
+                        <p className="text-slate-400 mb-8 text-sm">請輸入您的完整姓名以開始投票</p>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <input type="text" value={name} onChange={(e) => {setName(e.target.value); setError("");}} placeholder="例如：01王小明" className="w-full bg-slate-800/50 border border-slate-600 text-white px-5 py-4 rounded-xl text-lg text-center focus:border-pink-500 transition-all outline-none input-glow placeholder-slate-600"/>
                             {error && <div className="text-red-400 text-sm animate-pulse"><i className="fas fa-exclamation-circle"></i> {error}</div>}
