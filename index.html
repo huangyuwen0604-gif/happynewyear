@@ -112,7 +112,7 @@
                             <i className="fas fa-user-astronaut text-4xl"></i>
                         </div>
                         <h2 className="text-2xl font-black text-white mb-2">歡迎來到梗圖大賞</h2>
-                        <p className="text-slate-400 mb-8 text-sm">請輸入您的真實姓名或座號以開始投票<br/>(每人僅限投票一次)</p>
+                        <p className="text-slate-400 mb-8 text-sm">請輸入您的班級及真實姓名以開始投票<br/>(每人僅限投票一次)</p>
                         
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="relative">
@@ -120,7 +120,7 @@
                                     type="text" 
                                     value={name}
                                     onChange={(e) => {setName(e.target.value); setError("");}}
-                                    placeholder="例如：01王小明" 
+                                    placeholder="例如：˙701王小明" 
                                     className="w-full bg-slate-800/50 border border-slate-600 text-white px-5 py-4 rounded-xl text-lg text-center focus:border-pink-500 transition-all outline-none input-glow placeholder-slate-600"
                                 />
                             </div>
@@ -180,7 +180,7 @@
             const [allVotes, setAllVotes] = useState({});
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [loading, setLoading] = useState(true);
-            const MAX_VOTES = 3;
+            const MAX_VOTES = 5; // 修改為 5 票
 
             // 監聽 Auth 與 Firebase 數據
             useEffect(() => {
@@ -312,7 +312,7 @@
                              </button>
                         </div>
                         <h1 className="text-4xl md:text-5xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">資優班梗圖大賞</h1>
-                        <p className="text-slate-400 text-sm">每人 3 票，選出年度經典！</p>
+                        <p className="text-slate-400 text-sm">每人 5 票，選出年度經典！</p>
                     </header>
 
                     <main className="max-w-7xl mx-auto px-4">
