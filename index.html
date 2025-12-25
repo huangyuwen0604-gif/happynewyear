@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Firebase 核心 (Compat 版本) - 已加入 Auth 模組 -->
+    <!-- Firebase 核心 (Compat 版本) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -25,6 +25,15 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .input-glow:focus { box-shadow: 0 0 15px rgba(236, 72, 153, 0.5); border-color: #ec4899; outline: none; }
+        
+        /* 頒獎典禮特效 */
+        .spotlight {
+            background: radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0) 70%);
+        }
+        .slide-in-bottom { animation: slideInBottom 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideInBottom { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .shine { position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%); transform: skewX(-25deg); animation: shine 3s infinite; }
+        @keyframes shine { 100% { left: 200%; } }
     </style>
 </head>
 <body>
@@ -41,7 +50,7 @@
         //  設定區域
         // ==========================================
 
-        const ADMIN_PASSWORD = "admin888"; // ★★★ 管理員重置密碼 (請自行修改) ★★★
+        const ADMIN_PASSWORD = "admin888"; 
 
         const firebaseConfig = {
             apiKey: "AIzaSyDe-m-4ZQY5ygJWpC3Q7itoWHPs4uzbadY",
@@ -68,16 +77,16 @@
             "1RE_Np5Jn-rsgOume1o2sD1sMuPb8OCTo", "1Roz3oj4hGT5YN5F_GbbSTYa5IGqxDaQM"
         ];
 
-        // 初始化 Firebase (包含 Auth)
+        // 初始化 Firebase
         let db = null;
         let auth = null;
         try {
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
-            auth = firebase.auth(); // 初始化 Auth
+            auth = firebase.auth();
         } catch (e) { console.error("Firebase Init Error:", e); }
 
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useRef } = React;
         const COLLECTION_PATH = "meme_vote_2025_records"; 
 
         const MEME_DATA = PHOTO_IDS.map((id, i) => ({
@@ -85,6 +94,54 @@
             url: `https://lh3.googleusercontent.com/d/${id}=s800`,
             title: `年度梗圖 #${i + 1}`,
         }));
+
+        // --- 簡易彩帶特效 ---
+        const Confetti = () => {
+            const canvasRef = useRef(null);
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let width = window.innerWidth;
+                let height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+
+                const particles = [];
+                const colors = ['#FFD700', '#FF1493', '#00FFFF', '#7FFF00', '#FF4500'];
+
+                for(let i=0; i<150; i++) {
+                    particles.push({
+                        x: Math.random() * width,
+                        y: Math.random() * height - height,
+                        w: Math.random() * 10 + 5,
+                        h: Math.random() * 10 + 5,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        speed: Math.random() * 5 + 2,
+                        angle: Math.random() * 360
+                    });
+                }
+
+                let animationId;
+                const draw = () => {
+                    ctx.clearRect(0, 0, width, height);
+                    particles.forEach(p => {
+                        ctx.fillStyle = p.color;
+                        ctx.save();
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate(p.angle * Math.PI / 180);
+                        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+                        ctx.restore();
+                        p.y += p.speed;
+                        p.angle += 2;
+                        if(p.y > height) p.y = -20;
+                    });
+                    animationId = requestAnimationFrame(draw);
+                };
+                draw();
+                return () => cancelAnimationFrame(animationId);
+            }, []);
+            return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-50" />;
+        };
 
         // --- 登入畫面組件 ---
         const LoginScreen = ({ onLogin }) => {
@@ -94,49 +151,133 @@
             const handleSubmit = (e) => {
                 e.preventDefault();
                 const cleanName = name.trim();
-                if (!cleanName) {
-                    setError("請輸入班級及名字");
-                    return;
-                }
-                if (cleanName.length < 2) {
-                    setError("名字太短囉，請輸入完整姓名");
-                    return;
-                }
+                if (!cleanName) { setError("請輸入名字或座號"); return; }
+                if (cleanName.length < 2) { setError("名字太短囉"); return; }
                 onLogin(cleanName);
             };
 
             return (
                 <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
                     <div className="max-w-md w-full glass-panel p-8 rounded-3xl shadow-2xl text-center border border-white/10">
-                        <div className="mb-6 inline-block p-4 rounded-full bg-pink-500/10 text-pink-500">
-                            <i className="fas fa-user-astronaut text-4xl"></i>
-                        </div>
-                        <h2 className="text-2xl font-black text-white mb-2">歡迎來到2025資優班梗圖大賞</h2>
-                        <p className="text-slate-400 mb-8 text-sm">請輸入您的班級及姓名以開始投票<br/>(每人僅限投票一次)</p>
-                        
+                        <div className="mb-6 inline-block p-4 rounded-full bg-pink-500/10 text-pink-500"><i className="fas fa-user-astronaut text-4xl"></i></div>
+                        <h2 className="text-2xl font-black text-white mb-2">歡迎來到梗圖大賞</h2>
+                        <p className="text-slate-400 mb-8 text-sm">請輸入您的真實姓名或座號以開始投票</p>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="relative">
-                                <input 
-                                    type="text" 
-                                    value={name}
-                                    onChange={(e) => {setName(e.target.value); setError("");}}
-                                    placeholder="例如：˙701王小明" 
-                                    className="w-full bg-slate-800/50 border border-slate-600 text-white px-5 py-4 rounded-xl text-lg text-center focus:border-pink-500 transition-all outline-none input-glow placeholder-slate-600"
-                                />
-                            </div>
+                            <input type="text" value={name} onChange={(e) => {setName(e.target.value); setError("");}} placeholder="例如：01王小明" className="w-full bg-slate-800/50 border border-slate-600 text-white px-5 py-4 rounded-xl text-lg text-center focus:border-pink-500 transition-all outline-none input-glow placeholder-slate-600"/>
                             {error && <div className="text-red-400 text-sm animate-pulse"><i className="fas fa-exclamation-circle"></i> {error}</div>}
-                            
-                            <button type="submit" className="w-full py-4 bg-gradient-to-r from-pink-600 to-purple-600 rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] active:scale-95 transition-all">
-                                開始投票 <i className="fas fa-arrow-right ml-2"></i>
-                            </button>
+                            <button type="submit" className="w-full py-4 bg-gradient-to-r from-pink-600 to-purple-600 rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] active:scale-95 transition-all">開始投票 <i className="fas fa-arrow-right ml-2"></i></button>
                         </form>
                     </div>
                 </div>
             );
         };
 
+        // --- 頒獎典禮組件 (新增) ---
+        const AwardsCeremony = ({ memes, onExit }) => {
+            const [step, setStep] = useState(0); // 0: Intro, 1: Rank 5, ..., 5: Rank 1
+            const top5 = memes.slice(0, 5); // 已經是排序好的 Top 5
+            
+            // 倒數揭曉順序：Rank 5 -> Rank 1
+            const currentRank = 5 - (step - 1); // step 1 -> rank 5, step 5 -> rank 1
+            const currentMeme = step > 0 && step <= 5 ? top5[currentRank - 1] : null;
+
+            const nextStep = () => {
+                if (step < 6) setStep(step + 1);
+                else onExit();
+            };
+
+            const prevStep = () => {
+                if (step > 0) setStep(step - 1);
+            };
+
+            // 鍵盤控制
+            useEffect(() => {
+                const handleKey = (e) => {
+                    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') nextStep();
+                    if (e.key === 'ArrowLeft') prevStep();
+                };
+                window.addEventListener('keydown', handleKey);
+                return () => window.removeEventListener('keydown', handleKey);
+            }, [step]);
+
+            if (step === 0) {
+                return (
+                    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center cursor-pointer spotlight" onClick={nextStep}>
+                        <div className="text-pink-500 text-xl font-bold mb-4 tracking-widest animate-pulse">2025 ANNUAL AWARDS</div>
+                        <h1 className="text-6xl md:text-8xl font-black text-white mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">頒獎典禮</h1>
+                        <p className="text-slate-400 text-lg animate-bounce mt-10">點擊螢幕或按空白鍵開始</p>
+                    </div>
+                );
+            }
+
+            if (step === 6) {
+                return (
+                    <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center text-center p-4">
+                         <Confetti />
+                         <h2 className="text-4xl font-bold text-yellow-400 mb-8">🎉 恭喜所有得獎者！</h2>
+                         <div className="flex gap-4 overflow-x-auto p-4 max-w-full no-scrollbar">
+                            {top5.map((m, i) => (
+                                <div key={m.id} className="min-w-[150px] bg-slate-800 rounded-xl p-3 border border-white/10">
+                                    <div className="text-2xl font-black text-slate-500 mb-2">#{i+1}</div>
+                                    <img src={m.url} className="w-full h-24 object-cover rounded-lg mb-2" />
+                                    <div className="text-xs text-white truncate">{m.title}</div>
+                                </div>
+                            ))}
+                         </div>
+                         <button onClick={onExit} className="mt-10 px-8 py-3 bg-slate-800 rounded-full text-slate-300 hover:bg-slate-700 transition z-50 relative">結束頒獎</button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-4 spotlight transition-all duration-500" onClick={nextStep}>
+                    {currentRank === 1 && <Confetti />}
+                    
+                    {/* Rank Badge */}
+                    <div className={`text-2xl font-bold mb-4 tracking-widest uppercase ${
+                        currentRank === 1 ? 'text-yellow-400' : 
+                        currentRank === 2 ? 'text-slate-300' : 
+                        currentRank === 3 ? 'text-orange-400' : 'text-slate-500'
+                    }`}>
+                        Top {currentRank}
+                    </div>
+
+                    {/* Content Card */}
+                    <div className="relative w-full max-w-2xl aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 slide-in-bottom">
+                         {/* Image */}
+                         <img src={currentMeme.url} className="w-full h-full object-contain bg-slate-900" />
+                         
+                         {/* Info Overlay */}
+                         <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black via-black/80 to-transparent flex items-end justify-between">
+                             <div>
+                                 <div className="text-pink-500 font-mono font-bold text-xl mb-1">#{currentMeme.id}</div>
+                                 <h2 className="text-3xl md:text-5xl font-black text-white">{currentMeme.title}</h2>
+                             </div>
+                             <div className="text-right">
+                                 <div className="text-6xl font-black text-yellow-400 leading-none">{currentMeme.count}</div>
+                                 <div className="text-slate-400 font-bold uppercase tracking-wider text-sm">Votes</div>
+                             </div>
+                         </div>
+                         
+                         {/* Rank Medal */}
+                         <div className={`absolute top-6 right-6 w-20 h-20 rounded-full flex items-center justify-center text-4xl font-black shadow-lg
+                             ${currentRank === 1 ? 'bg-yellow-500 text-yellow-900' : 
+                               currentRank === 2 ? 'bg-slate-300 text-slate-900' :
+                               currentRank === 3 ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 border border-white/20'}
+                         `}>
+                             {currentRank}
+                         </div>
+                    </div>
+
+                    <p className="mt-8 text-slate-500 text-sm animate-pulse">點擊任意處揭曉下一名</p>
+                </div>
+            );
+        };
+
         // --- 排行榜組件 ---
         const ResultsView = ({ votes, onBack, totalVotes }) => {
+            const [showAwards, setShowAwards] = useState(false);
+
             const sortedMemes = useMemo(() => {
                 const counts = {};
                 MEME_DATA.forEach(m => counts[m.id] = 0);
@@ -148,17 +289,26 @@
             }, [votes]);
             const maxVotes = Math.max(...sortedMemes.map(m => m.count), 1);
 
+            if (showAwards) {
+                return <AwardsCeremony memes={sortedMemes} onExit={() => setShowAwards(false)} />;
+            }
+
             return (
                 <div className="min-h-screen bg-slate-900 pt-16 px-4 pb-20">
-                    <div className="max-w-2xl mx-auto">
+                    <div className="max-w-3xl mx-auto">
                         <div className="flex justify-between items-center mb-8">
                             <button onClick={onBack} className="text-slate-400 hover:text-white px-4 py-2 rounded-xl bg-slate-800 transition"><i className="fas fa-arrow-left"></i> 返回</button>
-                            <div className="text-slate-500 text-xs">總投票數: {totalVotes}</div>
+                            <div className="flex gap-2">
+                                <div className="text-slate-500 text-xs self-center">總票數: {totalVotes}</div>
+                                <button onClick={() => setShowAwards(true)} className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold px-4 py-2 rounded-xl shadow-lg hover:scale-105 transition flex items-center gap-2">
+                                    <i className="fas fa-film"></i> 進入頒獎典禮
+                                </button>
+                            </div>
                         </div>
                         <h2 className="text-3xl font-black text-center mb-10 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500">🏆 即時戰況</h2>
                         <div className="space-y-3">
                             {sortedMemes.map((m, i) => (
-                                <div key={m.id} className="relative glass-panel rounded-2xl p-4 flex items-center gap-4 overflow-hidden shadow-xl">
+                                <div key={m.id} className="relative glass-panel rounded-2xl p-4 flex items-center gap-4 overflow-hidden shadow-xl hover:bg-slate-800/80 transition">
                                     <div className="absolute left-0 top-0 bottom-0 bg-pink-500/10 transition-all duration-1000" style={{width: `${(m.count/maxVotes)*100}%`}}></div>
                                     <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg font-black text-lg ${i<3 ? 'bg-yellow-500 text-yellow-950' : 'bg-slate-700 text-slate-400'}`}>{i + 1}</div>
                                     <div className="w-14 h-11 rounded bg-slate-900 overflow-hidden flex-shrink-0 z-10"><img src={m.url} className="w-full h-full object-cover" /></div>
@@ -180,58 +330,26 @@
             const [allVotes, setAllVotes] = useState({});
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [loading, setLoading] = useState(true);
-            const MAX_VOTES = 5; // 修改為 5 票
+            const MAX_VOTES = 5; 
 
-            // 監聽 Auth 與 Firebase 數據
             useEffect(() => {
-                if (!db || !auth) {
-                    console.error("Firebase not initialized.");
-                    setLoading(false);
-                    return;
-                }
-
-                // 安全機制：設定超時
-                const timeoutId = setTimeout(() => {
-                    console.warn("Connection slow...");
-                    setLoading(false); 
-                }, 5000);
-
-                // 1. 先執行匿名登入，確保有權限
-                auth.signInAnonymously()
-                    .then(() => {
-                        console.log("Signed in anonymously");
-                        // 2. 登入成功後再開始監聽數據
-                        const unsubscribe = db.collection(COLLECTION_PATH).onSnapshot(snapshot => {
-                            clearTimeout(timeoutId); 
-                            const data = {};
-                            snapshot.forEach(doc => data[doc.id] = doc.data().choices);
-                            setAllVotes(data);
-                            setLoading(false);
-                        }, (error) => {
-                            clearTimeout(timeoutId);
-                            console.error("Firestore Error:", error);
-                            alert("讀取數據錯誤 (請檢查 Firebase Console 的 Rules 是否設為 if true)：" + error.message);
-                            setLoading(false);
-                        });
-                        return unsubscribe;
-                    })
-                    .catch((error) => {
-                        clearTimeout(timeoutId);
-                        console.error("Auth Error:", error);
-                        alert("登入失敗，請檢查 Firebase Auth 設定或網路連線");
+                if (!db || !auth) { setLoading(false); return; }
+                const timeoutId = setTimeout(() => setLoading(false), 5000);
+                auth.signInAnonymously().then(() => {
+                    db.collection(COLLECTION_PATH).onSnapshot(snapshot => {
+                        clearTimeout(timeoutId); 
+                        const data = {};
+                        snapshot.forEach(doc => data[doc.id] = doc.data().choices);
+                        setAllVotes(data);
                         setLoading(false);
                     });
-
+                }).catch(e => { console.error(e); setLoading(false); });
                 return () => clearTimeout(timeoutId);
             }, []);
 
             const handleLogin = (name) => {
                 setUserName(name);
-                if (allVotes[name]) {
-                    setHasVoted(true);
-                    setSelectedIds(allVotes[name]);
-                    alert(`歡迎回來，${name}！您已經完成投票囉。`);
-                }
+                if (allVotes[name]) { setHasVoted(true); setSelectedIds(allVotes[name]); alert(`歡迎回來，${name}！`); }
             };
 
             const toggle = (id) => {
@@ -251,54 +369,27 @@
                     });
                     setHasVoted(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                } catch (e) {
-                    alert("投票失敗：" + e.message);
-                } finally {
-                    setIsSubmitting(false);
-                }
+                } catch (e) { alert("失敗：" + e.message); } finally { setIsSubmitting(false); }
             };
 
             const handleAdminReset = async () => {
-                const pwd = prompt("請輸入管理員密碼以重置所有投票：");
-                if (pwd === ADMIN_PASSWORD) {
-                    if (confirm("⚠️ 警告：這將會刪除「所有」人的投票紀錄，無法復原！\n\n確定要執行嗎？")) {
-                        setIsSubmitting(true);
-                        try {
-                            const snapshot = await db.collection(COLLECTION_PATH).get();
-                            const batch = db.batch();
-                            snapshot.docs.forEach((doc) => {
-                                batch.delete(doc.ref);
-                            });
-                            await batch.commit();
-                            alert("✅ 重置成功！所有票數已歸零。");
-                            window.location.reload();
-                        } catch (e) {
-                            alert("重置失敗：" + e.message);
-                        } finally {
-                            setIsSubmitting(false);
-                        }
-                    }
-                } else if (pwd) {
-                    alert("密碼錯誤");
+                const pwd = prompt("密碼：");
+                if (pwd === ADMIN_PASSWORD && confirm("確定刪除所有資料？")) {
+                    setIsSubmitting(true);
+                    try {
+                        const snapshot = await db.collection(COLLECTION_PATH).get();
+                        const batch = db.batch();
+                        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+                        await batch.commit();
+                        alert("已重置");
+                        window.location.reload();
+                    } catch (e) { alert("錯誤"); } finally { setIsSubmitting(false); }
                 }
             };
 
-            if (loading) return (
-                <div className="h-screen flex flex-col items-center justify-center text-slate-500">
-                    <div className="loader mb-4"></div> 
-                    <div>讀取數據中...</div>
-                    <div className="text-xs mt-2 text-slate-600">若等待過久，請檢查網路連線或 Firebase 規則</div>
-                </div>
-            );
+            if (loading) return <div className="h-screen flex items-center justify-center text-slate-500">Loading...</div>;
 
-            if (!userName && !viewResults) {
-                return (
-                    <div>
-                         <LoginScreen onLogin={handleLogin} />
-                         <div className="fixed bottom-4 right-4 text-slate-700 text-xs cursor-pointer hover:text-red-500 transition" onClick={handleAdminReset}>Admin Reset</div>
-                    </div>
-                );
-            }
+            if (!userName && !viewResults) return <div><LoginScreen onLogin={handleLogin} /><div className="fixed bottom-4 right-4 text-slate-800 text-[10px]" onClick={handleAdminReset}>Reset</div></div>;
 
             if (viewResults) return <ResultsView votes={allVotes} onBack={() => setViewResults(false)} totalVotes={Object.keys(allVotes).length} />;
 
@@ -307,22 +398,17 @@
                     <header className="pt-10 pb-6 px-4 text-center relative">
                         <div className="flex justify-between items-center max-w-4xl mx-auto mb-4 px-2">
                              <div className="text-xs text-slate-500 font-mono">USER: {userName}</div>
-                             <button onClick={() => setViewResults(true)} className="glass-panel text-yellow-400 text-xs px-4 py-2 rounded-full hover:bg-slate-800 transition flex items-center gap-2">
-                                <i className="fas fa-chart-bar"></i> 戰況
-                             </button>
+                             <button onClick={() => setViewResults(true)} className="glass-panel text-yellow-400 text-xs px-4 py-2 rounded-full hover:bg-slate-800 transition flex items-center gap-2"><i className="fas fa-chart-bar"></i> 戰況</button>
                         </div>
                         <h1 className="text-4xl md:text-5xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">資優班梗圖大賞</h1>
                         <p className="text-slate-400 text-sm">每人 5 票，選出年度經典！</p>
                     </header>
-
                     <main className="max-w-7xl mx-auto px-4">
                         {hasVoted ? (
                             <div className="max-w-md mx-auto glass-panel rounded-3xl p-10 text-center mt-10">
-                                <div className="text-6xl mb-4">🎉</div>
-                                <h2 className="text-2xl font-bold mb-2">投票完成！</h2>
-                                <p className="text-slate-400 text-sm mb-8">感謝 {userName} 的參與</p>
-                                <button onClick={() => setViewResults(true)} className="w-full py-3 bg-purple-600 rounded-xl font-bold shadow-lg">觀看排行榜</button>
-                                <button onClick={() => window.location.reload()} className="mt-4 text-xs text-slate-500 hover:text-slate-300">切換使用者 (登出)</button>
+                                <div className="text-6xl mb-4">🎉</div><h2 className="text-2xl font-bold mb-2">投票完成！</h2>
+                                <button onClick={() => setViewResults(true)} className="w-full py-3 bg-purple-600 rounded-xl font-bold shadow-lg mt-4">觀看排行榜</button>
+                                <button onClick={() => window.location.reload()} className="mt-4 text-xs text-slate-500">登出</button>
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
@@ -330,40 +416,30 @@
                                     const isSelected = selectedIds.includes(meme.id);
                                     const isLocked = selectedIds.length >= MAX_VOTES && !isSelected;
                                     return (
-                                        <div key={meme.id} 
-                                             className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-200 group ${isSelected ? 'card-selected' : 'border border-white/5'} ${isLocked ? 'opacity-40 grayscale' : 'opacity-100'}`}
-                                             onClick={() => toggle(meme.id)}>
+                                        <div key={meme.id} className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-200 group ${isSelected ? 'card-selected' : 'border border-white/5'} ${isLocked ? 'opacity-40 grayscale' : 'opacity-100'}`} onClick={() => toggle(meme.id)}>
                                             <div className="aspect-[4/3] bg-slate-950 relative">
                                                 <img src={meme.url} className="w-full h-full object-cover" loading="lazy" />
                                                 {isSelected && <div className="absolute inset-0 bg-pink-600/40 flex items-center justify-center"><i className="fas fa-check text-2xl text-white"></i></div>}
                                                 <div className="absolute top-1 left-1 px-1.5 rounded bg-black/50 text-[10px] font-mono">#{meme.id}</div>
                                             </div>
-                                            <div className={`p-2 text-center text-xs font-bold ${isSelected ? 'bg-pink-900/50 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                                                {isSelected ? '已選擇' : '點擊投票'}
-                                            </div>
+                                            <div className={`p-2 text-center text-xs font-bold ${isSelected ? 'bg-pink-900/50 text-white' : 'bg-slate-800 text-slate-400'}`}>{isSelected ? '已選擇' : '投票'}</div>
                                         </div>
                                     );
                                 })}
                             </div>
                         )}
                     </main>
-
                     {!hasVoted && (
                         <div className="fixed bottom-6 left-0 w-full flex justify-center px-4 pointer-events-none z-50">
-                            <button onClick={submit} disabled={selectedIds.length === 0 || isSubmitting} 
-                                className={`pointer-events-auto shadow-2xl px-8 py-3 rounded-full font-bold text-lg flex items-center gap-2 transition-all transform ${selectedIds.length > 0 ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white scale-105' : 'bg-slate-800 text-slate-500 opacity-80'}`}>
+                            <button onClick={submit} disabled={selectedIds.length === 0 || isSubmitting} className={`pointer-events-auto shadow-2xl px-8 py-3 rounded-full font-bold text-lg flex items-center gap-2 transition-all transform ${selectedIds.length > 0 ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white scale-105' : 'bg-slate-800 text-slate-500 opacity-80'}`}>
                                 {isSubmitting ? '處理中...' : selectedIds.length > 0 ? `送出 ${selectedIds.length} 票` : '請選擇圖片'}
                             </button>
                         </div>
                     )}
-                    
-                    <div className="fixed bottom-2 right-2 text-slate-800 hover:text-red-800 cursor-pointer text-[10px] select-none" onClick={handleAdminReset}>
-                        <i className="fas fa-trash"></i> Reset
-                    </div>
+                    <div className="fixed bottom-2 right-2 text-slate-800 hover:text-red-800 cursor-pointer text-[10px] select-none" onClick={handleAdminReset}><i className="fas fa-trash"></i> Reset</div>
                 </div>
             );
         }
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
