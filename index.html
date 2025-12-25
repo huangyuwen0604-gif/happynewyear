@@ -12,8 +12,9 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Firebase 核心 (Compat 版本) -->
+    <!-- Firebase 核心 (Compat 版本) - 已加入 Auth 模組 -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
@@ -67,15 +68,17 @@
             "1RE_Np5Jn-rsgOume1o2sD1sMuPb8OCTo", "1Roz3oj4hGT5YN5F_GbbSTYa5IGqxDaQM"
         ];
 
-        // 初始化 Firebase
+        // 初始化 Firebase (包含 Auth)
         let db = null;
+        let auth = null;
         try {
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
+            auth = firebase.auth(); // 初始化 Auth
         } catch (e) { console.error("Firebase Init Error:", e); }
 
         const { useState, useEffect, useMemo } = React;
-        const COLLECTION_PATH = "meme_vote_2025_records"; // 存放投票資料的集合名稱
+        const COLLECTION_PATH = "meme_vote_2025_records"; 
 
         const MEME_DATA = PHOTO_IDS.map((id, i) => ({
             id: i + 1,
@@ -95,7 +98,6 @@
                     setError("請輸入名字或座號");
                     return;
                 }
-                // 簡單防呆：名字太短
                 if (cleanName.length < 2) {
                     setError("名字太短囉，請輸入完整姓名");
                     return;
@@ -171,7 +173,7 @@
         };
 
         function App() {
-            const [userName, setUserName] = useState(""); // 儲存使用者名字
+            const [userName, setUserName] = useState(""); 
             const [selectedIds, setSelectedIds] = useState([]);
             const [hasVoted, setHasVoted] = useState(false);
             const [viewResults, setViewResults] = useState(false);
@@ -180,44 +182,51 @@
             const [loading, setLoading] = useState(true);
             const MAX_VOTES = 3;
 
-            // 監聽 Firebase 數據
+            // 監聽 Auth 與 Firebase 數據
             useEffect(() => {
-                // 安全檢查：如果 db 未初始化，直接解除 loading 並顯示錯誤
-                if (!db) {
-                    console.error("Firebase DB not initialized.");
+                if (!db || !auth) {
+                    console.error("Firebase not initialized.");
                     setLoading(false);
                     return;
                 }
 
-                // 安全機制：設定 5 秒超時，避免因為網路問題一直卡在 "讀取數據中"
+                // 安全機制：設定超時
                 const timeoutId = setTimeout(() => {
-                    console.warn("Firestore connection timed out, forcing UI render.");
-                    setLoading(false);
+                    console.warn("Connection slow...");
+                    setLoading(false); 
                 }, 5000);
 
-                const unsubscribe = db.collection(COLLECTION_PATH).onSnapshot(snapshot => {
-                    clearTimeout(timeoutId); // 成功連線，清除超時設定
-                    const data = {};
-                    snapshot.forEach(doc => data[doc.id] = doc.data().choices);
-                    setAllVotes(data);
-                    setLoading(false);
-                }, (error) => {
-                    clearTimeout(timeoutId);
-                    console.error("Firestore Error:", error);
-                    alert("讀取數據發生錯誤 (可能是網路問題或權限過期)：" + error.message);
-                    setLoading(false);
-                });
+                // 1. 先執行匿名登入，確保有權限
+                auth.signInAnonymously()
+                    .then(() => {
+                        console.log("Signed in anonymously");
+                        // 2. 登入成功後再開始監聽數據
+                        const unsubscribe = db.collection(COLLECTION_PATH).onSnapshot(snapshot => {
+                            clearTimeout(timeoutId); 
+                            const data = {};
+                            snapshot.forEach(doc => data[doc.id] = doc.data().choices);
+                            setAllVotes(data);
+                            setLoading(false);
+                        }, (error) => {
+                            clearTimeout(timeoutId);
+                            console.error("Firestore Error:", error);
+                            alert("讀取數據錯誤 (請檢查 Firebase Console 的 Rules 是否設為 if true)：" + error.message);
+                            setLoading(false);
+                        });
+                        return unsubscribe;
+                    })
+                    .catch((error) => {
+                        clearTimeout(timeoutId);
+                        console.error("Auth Error:", error);
+                        alert("登入失敗，請檢查 Firebase Auth 設定或網路連線");
+                        setLoading(false);
+                    });
 
-                return () => {
-                    clearTimeout(timeoutId);
-                    unsubscribe();
-                };
+                return () => clearTimeout(timeoutId);
             }, []);
 
-            // 處理登入（檢查是否投過票）
             const handleLogin = (name) => {
                 setUserName(name);
-                // 檢查這個名字是否已經在資料庫中
                 if (allVotes[name]) {
                     setHasVoted(true);
                     setSelectedIds(allVotes[name]);
@@ -235,7 +244,6 @@
                 if (selectedIds.length === 0 || isSubmitting) return;
                 setIsSubmitting(true);
                 try {
-                    // 使用名字作為 Document ID，確保一個名字只能有一筆資料
                     await db.collection(COLLECTION_PATH).doc(userName).set({
                         choices: selectedIds,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -250,14 +258,12 @@
                 }
             };
 
-            // ★★★ 管理員重置功能 ★★★
             const handleAdminReset = async () => {
                 const pwd = prompt("請輸入管理員密碼以重置所有投票：");
                 if (pwd === ADMIN_PASSWORD) {
                     if (confirm("⚠️ 警告：這將會刪除「所有」人的投票紀錄，無法復原！\n\n確定要執行嗎？")) {
                         setIsSubmitting(true);
                         try {
-                            // 批次刪除
                             const snapshot = await db.collection(COLLECTION_PATH).get();
                             const batch = db.batch();
                             snapshot.docs.forEach((doc) => {
@@ -281,11 +287,10 @@
                 <div className="h-screen flex flex-col items-center justify-center text-slate-500">
                     <div className="loader mb-4"></div> 
                     <div>讀取數據中...</div>
-                    <div className="text-xs mt-2 text-slate-600">若等待過久，請檢查網路連線</div>
+                    <div className="text-xs mt-2 text-slate-600">若等待過久，請檢查網路連線或 Firebase 規則</div>
                 </div>
             );
 
-            // 如果還沒輸入名字，顯示登入頁面
             if (!userName && !viewResults) {
                 return (
                     <div>
@@ -352,7 +357,6 @@
                         </div>
                     )}
                     
-                    {/* 管理員重置按鈕 (在頁面最右下角，只有知道位置的人才按得到) */}
                     <div className="fixed bottom-2 right-2 text-slate-800 hover:text-red-800 cursor-pointer text-[10px] select-none" onClick={handleAdminReset}>
                         <i className="fas fa-trash"></i> Reset
                     </div>
