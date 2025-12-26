@@ -3,16 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2025 資優班年度梗圖大賞</title>
+    <title>2025 資優班年度梗圖大賞 (除錯版)</title>
     
-    <!-- 基礎樣式與核心庫 -->
+    <!-- 1. 錯誤捕捉器 (放在最前面) -->
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            const debugDiv = document.getElementById('debug-console');
+            const rootDiv = document.getElementById('root');
+            if (debugDiv) {
+                debugDiv.style.display = 'block';
+                debugDiv.innerHTML += `<div style="border-bottom:1px solid #444; padding: 10px; margin-bottom: 10px;">
+                    <strong>❌ 錯誤偵測:</strong><br/>
+                    ${msg}<br/>
+                    <small style="color:#aaa;">位置: ${line}:${col}</small>
+                </div>`;
+                // 隱藏原本的載入畫面，避免擋住錯誤訊息
+                if(rootDiv) rootDiv.style.display = 'none';
+            }
+            return false;
+        };
+        // 捕捉 Promise 錯誤 (例如 Firebase 連線失敗)
+        window.onunhandledrejection = function(event) {
+            const debugDiv = document.getElementById('debug-console');
+            if (debugDiv) {
+                debugDiv.style.display = 'block';
+                debugDiv.innerHTML += `<div style="border-bottom:1px solid #444; padding: 10px; margin-bottom: 10px;">
+                    <strong>⚠️ 非同步錯誤:</strong><br/>
+                    ${event.reason}<br/>
+                </div>`;
+            }
+        };
+    </script>
+
+    <!-- 2. 基礎樣式 -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Firebase 核心 (Compat 版本) -->
+    <!-- 3. React 核心 (改用 cdnjs，較穩定) -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <!-- 4. Firebase 核心 (Compat 版本) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -26,22 +58,42 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .input-glow:focus { box-shadow: 0 0 15px rgba(236, 72, 153, 0.5); border-color: #ec4899; outline: none; }
         
-        /* 頒獎典禮特效 */
-        .spotlight {
-            background: radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0) 70%);
+        /* 錯誤顯示區樣式 */
+        #debug-console {
+            display: none; /* 預設隱藏，有錯才顯示 */
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #1a0505;
+            color: #ffb3b3;
+            z-index: 9999;
+            padding: 20px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
         }
+        #debug-title { font-size: 1.5rem; font-weight: bold; color: #ff4d4d; margin-bottom: 20px; border-bottom: 2px solid #ff4d4d; padding-bottom: 10px; }
+        
+        /* 頒獎特效 */
+        .spotlight { background: radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0) 70%); }
         .slide-in-bottom { animation: slideInBottom 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes slideInBottom { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .shine { position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%); transform: skewX(-25deg); animation: shine 3s infinite; }
-        @keyframes shine { 100% { left: 200%; } }
     </style>
 </head>
 <body>
 
+    <!-- 錯誤顯示面板 -->
+    <div id="debug-console">
+        <div id="debug-title">🚨 系統發生錯誤 (Debug Mode)</div>
+        <p>請將下方訊息截圖給管理員：</p>
+        <hr style="border-color: #555; margin: 10px 0;">
+    </div>
+
+    <!-- 啟動畫面 -->
     <div id="root">
         <div style="height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8;">
             <div class="loader" style="width: 40px; height: 40px; margin-bottom: 20px;"></div>
             <div>系統啟動中...</div>
+            <div style="font-size: 12px; margin-top: 10px; opacity: 0.6;">若停留超過 5 秒，代表程式庫可能被阻擋</div>
         </div>
     </div>
 
@@ -74,18 +126,29 @@
             "1fiNbYcCASKrC6IiWex0Kty1qK1nfoEO2", "1-r0RAZN2EnR41URD0nAsA3J56PoAJloP", "16Lryo_Z_HmCfqTt3LYDhSDycgQIQa_RC",
             "1Zfj2HuXdAHPg8ceGFpeZcJVig4JoRnQ3", "1kw2QmHHWShZWUsYWPvytgAJiAvUPVfT4", "1aLnnu9rdz4P42Fjgv-vsJliX8TssskQR",
             "1YbR0Qe6SlJhWhrDEjr0wAPai4bVWe0NK", "1fyaFdn67r5c8YuSmLk63Tjl1B4OdzXtV", "1qiCwGZi3Q5YorHVKGg_tZ44NHiSN2jsf",
-            "1RE_Np5Jn-rsgOume1o2sD1sMuPb8OCTo", "1Roz3oj4hGT5YN5F_GbbSTYa5IGqxDaQM", "1zF-F_VBMOktKUeVlaB1PpRioCgmLl_tX",
-            "16rSi7PQ7XAIJpCC3uj8isrPxrJP_-c3Y", "1icwX5uRcx9PNTZ9r_Wl7_ZpWryu6e7pY", "1Z03O7rZvmAq1ToCStOIkpeTqHV7lDafv",
-            "1lUuLdddgafSuJ3t4IGLI7fjZeupePN65", "1WVDOULJWPT5ee9l3ssBauKcOG1Aw4qjp", "1wIOzSn98rXe5j7rj-bBKpmp1QDqNpcz1",
-            "1Z26m23lKYxffOwDYnz7nsAXPcPncpREv", "1eXcZS7Clyj812CfJF9cCZ5IwZ7JFOKRc",
-            // 初始化 Firebase
+            "1RE_Np5Jn-rsgOume1o2sD1sMuPb8OCTo", "1Roz3oj4hGT5YN5F_GbbSTYa5IGqxDaQM"
+        ];
+
+        // 檢查 React 是否成功載入
+        if (!window.React || !window.ReactDOM) {
+            throw new Error("React 核心庫載入失敗，請檢查網路連線");
+        }
+
+        // 初始化 Firebase
         let db = null;
         let auth = null;
         try {
+            if (typeof firebase === 'undefined') {
+                throw new Error("Firebase SDK 載入失敗 (firebase is undefined)");
+            }
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
             auth = firebase.auth();
-        } catch (e) { console.error("Firebase Init Error:", e); }
+            console.log("Firebase 準備就緒");
+        } catch (e) { 
+            console.error("Firebase Init Error:", e);
+            // 這裡不 throw，讓介面可以顯示，但標記為離線模式
+        }
 
         const { useState, useEffect, useMemo, useRef } = React;
         const COLLECTION_PATH = "meme_vote_2025_records"; 
@@ -152,7 +215,7 @@
             const handleSubmit = (e) => {
                 e.preventDefault();
                 const cleanName = name.trim();
-                if (!cleanName) { setError("請輸入完整姓名"); return; }
+                if (!cleanName) { setError("請輸入全名"); return; }
                 if (cleanName.length < 2) { setError("名字太短囉"); return; }
                 onLogin(cleanName);
             };
@@ -161,8 +224,8 @@
                 <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
                     <div className="max-w-md w-full glass-panel p-8 rounded-3xl shadow-2xl text-center border border-white/10">
                         <div className="mb-6 inline-block p-4 rounded-full bg-pink-500/10 text-pink-500"><i className="fas fa-user-astronaut text-4xl"></i></div>
-                        <h2 className="text-2xl font-black text-white mb-2">歡迎來到梗圖大賞</h2>
-                        <p className="text-slate-400 mb-8 text-sm">請輸入您的完整姓名以開始投票</p>
+                        <h2 className="text-2xl font-black text-white mb-2">歡迎來到2025梗圖大賞</h2>
+                        <p className="text-slate-400 mb-8 text-sm">請輸入您的全名以開始投票</p>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <input type="text" value={name} onChange={(e) => {setName(e.target.value); setError("");}} placeholder="例如：01王小明" className="w-full bg-slate-800/50 border border-slate-600 text-white px-5 py-4 rounded-xl text-lg text-center focus:border-pink-500 transition-all outline-none input-glow placeholder-slate-600"/>
                             {error && <div className="text-red-400 text-sm animate-pulse"><i className="fas fa-exclamation-circle"></i> {error}</div>}
@@ -173,25 +236,16 @@
             );
         };
 
-        // --- 頒獎典禮組件 (新增) ---
+        // --- 頒獎典禮組件 ---
         const AwardsCeremony = ({ memes, onExit }) => {
-            const [step, setStep] = useState(0); // 0: Intro, 1: Rank 5, ..., 5: Rank 1
-            const top5 = memes.slice(0, 5); // 已經是排序好的 Top 5
-            
-            // 倒數揭曉順序：Rank 5 -> Rank 1
-            const currentRank = 5 - (step - 1); // step 1 -> rank 5, step 5 -> rank 1
+            const [step, setStep] = useState(0); 
+            const top5 = memes.slice(0, 5); 
+            const currentRank = 5 - (step - 1); 
             const currentMeme = step > 0 && step <= 5 ? top5[currentRank - 1] : null;
 
-            const nextStep = () => {
-                if (step < 6) setStep(step + 1);
-                else onExit();
-            };
+            const nextStep = () => { if (step < 6) setStep(step + 1); else onExit(); };
+            const prevStep = () => { if (step > 0) setStep(step - 1); };
 
-            const prevStep = () => {
-                if (step > 0) setStep(step - 1);
-            };
-
-            // 鍵盤控制
             useEffect(() => {
                 const handleKey = (e) => {
                     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') nextStep();
@@ -233,22 +287,9 @@
             return (
                 <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-4 spotlight transition-all duration-500" onClick={nextStep}>
                     {currentRank === 1 && <Confetti />}
-                    
-                    {/* Rank Badge */}
-                    <div className={`text-2xl font-bold mb-4 tracking-widest uppercase ${
-                        currentRank === 1 ? 'text-yellow-400' : 
-                        currentRank === 2 ? 'text-slate-300' : 
-                        currentRank === 3 ? 'text-orange-400' : 'text-slate-500'
-                    }`}>
-                        Top {currentRank}
-                    </div>
-
-                    {/* Content Card */}
+                    <div className={`text-2xl font-bold mb-4 tracking-widest uppercase ${currentRank === 1 ? 'text-yellow-400' : currentRank === 2 ? 'text-slate-300' : currentRank === 3 ? 'text-orange-400' : 'text-slate-500'}`}>Top {currentRank}</div>
                     <div className="relative w-full max-w-2xl aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 slide-in-bottom">
-                         {/* Image */}
                          <img src={currentMeme.url} className="w-full h-full object-contain bg-slate-900" />
-                         
-                         {/* Info Overlay */}
                          <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black via-black/80 to-transparent flex items-end justify-between">
                              <div>
                                  <div className="text-pink-500 font-mono font-bold text-xl mb-1">#{currentMeme.id}</div>
@@ -259,17 +300,8 @@
                                  <div className="text-slate-400 font-bold uppercase tracking-wider text-sm">Votes</div>
                              </div>
                          </div>
-                         
-                         {/* Rank Medal */}
-                         <div className={`absolute top-6 right-6 w-20 h-20 rounded-full flex items-center justify-center text-4xl font-black shadow-lg
-                             ${currentRank === 1 ? 'bg-yellow-500 text-yellow-900' : 
-                               currentRank === 2 ? 'bg-slate-300 text-slate-900' :
-                               currentRank === 3 ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 border border-white/20'}
-                         `}>
-                             {currentRank}
-                         </div>
+                         <div className={`absolute top-6 right-6 w-20 h-20 rounded-full flex items-center justify-center text-4xl font-black shadow-lg ${currentRank === 1 ? 'bg-yellow-500 text-yellow-900' : currentRank === 2 ? 'bg-slate-300 text-slate-900' : currentRank === 3 ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 border border-white/20'}`}>{currentRank}</div>
                     </div>
-
                     <p className="mt-8 text-slate-500 text-sm animate-pulse">點擊任意處揭曉下一名</p>
                 </div>
             );
@@ -290,9 +322,7 @@
             }, [votes]);
             const maxVotes = Math.max(...sortedMemes.map(m => m.count), 1);
 
-            if (showAwards) {
-                return <AwardsCeremony memes={sortedMemes} onExit={() => setShowAwards(false)} />;
-            }
+            if (showAwards) return <AwardsCeremony memes={sortedMemes} onExit={() => setShowAwards(false)} />;
 
             return (
                 <div className="min-h-screen bg-slate-900 pt-16 px-4 pb-20">
@@ -334,8 +364,19 @@
             const MAX_VOTES = 5; 
 
             useEffect(() => {
-                if (!db || !auth) { setLoading(false); return; }
-                const timeoutId = setTimeout(() => setLoading(false), 5000);
+                if (!db || !auth) { 
+                    // 如果 Firebase 沒載入，不要一直卡在 Loading，讓使用者進去但無法投票
+                    console.warn("Firebase 未載入，進入離線模式");
+                    setLoading(false); 
+                    return; 
+                }
+
+                // 設定 5 秒超時，避免卡死
+                const timeoutId = setTimeout(() => {
+                    console.warn("Firebase 連線逾時，強制進入 UI");
+                    setLoading(false);
+                }, 5000);
+
                 auth.signInAnonymously().then(() => {
                     db.collection(COLLECTION_PATH).onSnapshot(snapshot => {
                         clearTimeout(timeoutId); 
@@ -343,8 +384,16 @@
                         snapshot.forEach(doc => data[doc.id] = doc.data().choices);
                         setAllVotes(data);
                         setLoading(false);
+                    }, error => {
+                        console.error("Firestore Read Error:", error);
+                        // 權限錯誤也解開 Loading，讓使用者看到錯誤提示
+                        setLoading(false);
                     });
-                }).catch(e => { console.error(e); setLoading(false); });
+                }).catch(e => { 
+                    console.error("Auth Error:", e); 
+                    setLoading(false); 
+                });
+
                 return () => clearTimeout(timeoutId);
             }, []);
 
@@ -370,7 +419,7 @@
                     });
                     setHasVoted(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                } catch (e) { alert("失敗：" + e.message); } finally { setIsSubmitting(false); }
+                } catch (e) { alert("投票失敗 (可能是網路或權限問題)：" + e.message); } finally { setIsSubmitting(false); }
             };
 
             const handleAdminReset = async () => {
@@ -384,11 +433,17 @@
                         await batch.commit();
                         alert("已重置");
                         window.location.reload();
-                    } catch (e) { alert("錯誤"); } finally { setIsSubmitting(false); }
+                    } catch (e) { alert("錯誤：" + e.message); } finally { setIsSubmitting(false); }
                 }
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center text-slate-500">Loading...</div>;
+            if (loading) return (
+                <div className="h-screen flex flex-col items-center justify-center text-slate-500">
+                    <div className="loader mb-4"></div>
+                    <div>資料讀取中...</div>
+                    <div className="text-xs mt-2 opacity-50">若卡住請重新整理</div>
+                </div>
+            );
 
             if (!userName && !viewResults) return <div><LoginScreen onLogin={handleLogin} /><div className="fixed bottom-4 right-4 text-slate-800 text-[10px]" onClick={handleAdminReset}>Reset</div></div>;
 
