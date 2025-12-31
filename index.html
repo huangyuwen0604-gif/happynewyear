@@ -1,506 +1,895 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2025 資優班年度梗圖大賞</title>
-    
-    <!-- 1. 錯誤捕捉器 (放在最前面) -->
-    <script>
-        window.onerror = function(msg, url, line, col, error) {
-            const debugDiv = document.getElementById('debug-console');
-            const rootDiv = document.getElementById('root');
-            if (debugDiv) {
-                debugDiv.style.display = 'block';
-                debugDiv.innerHTML += `<div style="border-bottom:1px solid #444; padding: 10px; margin-bottom: 10px;">
-                    <strong>❌ 錯誤偵測:</strong><br/>
-                    ${msg}<br/>
-                    <small style="color:#aaa;">位置: ${line}:${col}</small>
-                </div>`;
-                // 隱藏原本的載入畫面，避免擋住錯誤訊息
-                if(rootDiv) rootDiv.style.display = 'none';
-            }
-            return false;
-        };
-        // 捕捉 Promise 錯誤 (例如 Firebase 連線失敗)
-        window.onunhandledrejection = function(event) {
-            const debugDiv = document.getElementById('debug-console');
-            if (debugDiv) {
-                debugDiv.style.display = 'block';
-                debugDiv.innerHTML += `<div style="border-bottom:1px solid #444; padding: 10px; margin-bottom: 10px;">
-                    <strong>⚠️ 非同步錯誤:</strong><br/>
-                    ${event.reason}<br/>
-                </div>`;
-            }
-        };
-    </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>115學年度 勝利國中適性輔導安置 - 志願模擬系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  /* --- 基礎設定 --- */
+  body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; line-height: 1.4; }
+  .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); overflow-x: hidden; }
 
-    <!-- 2. 基礎樣式 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  /* 標題 */
+  h1 { text-align: center; color: #2c3e50; margin: 0 0 5px 0; font-size: 1.6em; font-weight: 800; }
+  .badge-school { background-color: #34495e; color: #fff; padding: 5px 15px; border-radius: 50px; font-size: 0.6em; vertical-align: middle; margin-bottom: 5px; display: inline-block; letter-spacing: 1px; }
+  .subtitle { text-align: center; color: #7f8c8d; font-size: 1em; margin-bottom: 20px; border-bottom: 3px solid #3498db; padding-bottom: 10px; font-weight: bold; }
 
-    <!-- 3. React 核心 (改用 cdnjs，較穩定) -->
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  /* 歡迎詞 */
+  .welcome-box { background-color: #fff8e1; border-left: 6px solid #ffb74d; padding: 15px 20px; margin-bottom: 25px; border-radius: 6px; }
+  .welcome-title { font-weight: bold; color: #e65100; font-size: 1.1em; margin-bottom: 8px; display: block; }
+  .welcome-list { margin: 0; padding-left: 20px; font-size: 0.95em; }
+  .welcome-list li { margin-bottom: 4px; }
 
-    <!-- 4. Firebase 核心 (Compat 版本) -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  /* 區塊 */
+  .section { margin-bottom: 25px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background: #fff; }
+  h2 { font-size: 1.2em; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 0; font-weight: bold; }
 
-    <style>
-        body { background-color: #0f172a; color: white; margin: 0; font-family: system-ui, sans-serif; overflow-x: hidden; }
-        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .card-selected { transform: scale(0.96); box-shadow: 0 0 0 4px #ec4899; z-index: 10; }
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #ec4899; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .input-glow:focus { box-shadow: 0 0 15px rgba(236, 72, 153, 0.5); border-color: #ec4899; outline: none; }
-        
-        /* 錯誤顯示區樣式 */
-        #debug-console {
-            display: none; /* 預設隱藏，有錯才顯示 */
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #1a0505;
-            color: #ffb3b3;
-            z-index: 9999;
-            padding: 20px;
-            overflow-y: auto;
-            font-family: monospace;
-            white-space: pre-wrap;
-        }
-        #debug-title { font-size: 1.5rem; font-weight: bold; color: #ff4d4d; margin-bottom: 20px; border-bottom: 2px solid #ff4d4d; padding-bottom: 10px; }
-        
-        /* 頒獎特效 */
-        .spotlight { background: radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0) 70%); }
-        .slide-in-bottom { animation: slideInBottom 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes slideInBottom { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    </style>
+  /* 輸入框 */
+  .input-row { display: flex; gap: 20px; flex-wrap: wrap; }
+  .input-group { flex: 1; min-width: 250px; }
+  label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+  input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; box-sizing: border-box; }
+
+  /* 職群按鈕 */
+  .cluster-area { display: flex; flex-wrap: wrap; gap: 8px; }
+  .c-btn { padding: 6px 14px; border: 1px solid #ccc; border-radius: 50px; cursor: pointer; background: #fff; transition: 0.2s; font-size: 0.95em; color: #555; }
+  .c-btn:hover { background: #f0f0f0; transform: translateY(-2px); }
+  .c-btn.active { background: #2c3e50; color: #fff; border-color: #2c3e50; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+  .c-btn.fourth { background: #e67e22; border-color: #d35400; color: white; }
+
+  /* 志願池 & 顏色 */
+  .pool-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px; }
+  .btn-select-all { padding: 6px 15px; font-size: 0.9em; background: #34495e; color: white; border: none; border-radius: 20px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  .btn-select-all:hover { background: #2c3e50; transform: translateY(-1px); }
+
+  .pool-area { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; max-height: 450px; overflow-y: auto; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; }
+   
+  /* 職群顏色定義 */
+  .bg-academic { background-color: #e3f2fd !important; border-left: 5px solid #2196f3; }
+  .bg-machine { background-color: #e0f7fa !important; border-left: 5px solid #00bcd4; }
+  .bg-power { background-color: #e8f5e9 !important; border-left: 5px solid #4caf50; }
+  .bg-electro { background-color: #fffde7 !important; border-left: 5px solid #fbc02d; }
+  .bg-business { background-color: #f3e5f5 !important; border-left: 5px solid #9c27b0; }
+  .bg-design { background-color: #fce4ec !important; border-left: 5px solid #e91e63; }
+  .bg-home { background-color: #f3e5f5 !important; border-left: 5px solid #673ab7; }
+  .bg-hosp { background-color: #fff3e0 !important; border-left: 5px solid #ff9800; }
+  .bg-food { background-color: #e0f2f1 !important; border-left: 5px solid #009688; }
+  .bg-agri { background-color: #f1f8e9 !important; border-left: 5px solid #8bc34a; }
+  .bg-service { background-color: #e8eaf6 !important; border-left: 5px solid #3f51b5; }
+  .bg-chem { background-color: #e1f5fe !important; border-left: 5px solid #03a9f4; }
+
+  .s-card { padding: 10px; border-radius: 6px; display: flex; align-items: center; cursor: pointer; border: 1px solid #eee; margin-bottom: 0; transition: 0.1s; }
+  .s-card:hover { transform: translateY(-2px); box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+  .s-card input { margin-right: 12px; transform: scale(1.5); cursor: pointer; pointer-events: none; }
+  .s-card label { cursor: pointer; width: 100%; line-height: 1.25; font-size: 0.95em; pointer-events: none; }
+
+  .count-display { display: inline-block; background: #eceff1; padding: 8px 20px; border-radius: 30px; font-weight: bold; color: #37474f; margin-top: 15px; font-size: 1em; border: 1px solid #cfd8dc; }
+
+  /* 排序區 */
+  ul#sortList { padding: 0; list-style: none; margin: 0; }
+  .sort-li { 
+      padding: 10px 15px; margin-bottom: 10px; 
+      background: #fff; border: 1px solid #ddd; border-radius: 8px; 
+      display: flex; align-items: center; cursor: grab;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative;
+  }
+  .sort-li:active { cursor: grabbing; background: #fafafa; }
+  .sort-li.err-active { border: 2px solid #c0392b !important; background-color: #ffebee !important; }
+
+  .idx-circle { 
+      width: 30px; height: 30px; background: #34495e; color: #fff; 
+      text-align: center; line-height: 30px; border-radius: 50%; 
+      margin-right: 15px; font-size: 0.9em; font-weight: bold; flex-shrink: 0;
+  }
+
+  .info-block { flex-grow: 1; display: flex; flex-direction: column; }
+  .info-top { font-size: 1.05em; font-weight: bold; color: #2c3e50; }
+  .info-btm { font-size: 0.9em; color: #666; margin-top: 2px; }
+   
+  .tag { 
+      display: inline-block; font-size: 0.8em; padding: 1px 6px; 
+      border-radius: 4px; background-color: rgba(255,255,255,0.6); 
+      border: 1px solid rgba(0,0,0,0.1); margin-left: 8px; vertical-align: text-top; color: #333;
+  }
+
+  .del-x { color: #bdbdbd; font-weight: bold; cursor: pointer; padding: 5px 10px; font-size: 1.4em; transition: 0.2s; margin-left: 10px; }
+  .del-x:hover { color: #e74c3c; }
+
+  /* 按鈕 */
+  .btn-zone { text-align: center; margin-top: 30px; }
+  .btn { padding: 12px 25px; font-size: 1em; border: none; border-radius: 50px; cursor: pointer; color: white; font-weight: bold; margin: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: transform 0.1s; }
+  .btn:active { transform: scale(0.95); }
+  .btn-main { background-color: #3498db; }
+  .btn-save { background-color: #9b59b6; }
+  .btn-dl { background-color: #27ae60; }
+  .btn-copy { background-color: #f39c12; }
+  .btn-back { background-color: #95a5a6; }
+  .btn-clear { background-color: #e74c3c; }
+
+  /* ------------------------------- */
+  /* --- 報表區塊 (A4強制版面) --- */
+  /* ------------------------------- */
+  .report-scroll-wrapper { width: 100%; overflow-x: auto; padding-bottom: 20px; -webkit-overflow-scrolling: touch; }
+  .scroll-hint { display: none; text-align: center; color: #7f8c8d; font-size: 0.85em; margin-top: -10px; margin-bottom: 10px; background: #f0f0f0; padding: 5px; border-radius: 15px; }
+  @media (max-width: 800px) { .scroll-hint { display: block; } }
+
+  #pageReport { 
+      display: none; min-width: 850px; width: 850px; margin: 0 auto;
+      border: 4px solid #34495e; padding: 40px; background: #fff; box-sizing: border-box;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; }
+  th, td { border: 1px solid #333; padding: 6px 8px; text-align: left; line-height: 1.3; white-space: nowrap; }
+  th { background: #eceff1; text-align: center; font-weight: bold; }
+   
+  /* 欄位寬度調整 */
+  .col-idx { width: 15%; text-align: center; }
+  .col-cluster { width: 25%; text-align: center; }
+  .col-school { width: 60%; text-align: left; }
+
+  /* 縮小的標籤 */
+  .badge-fourth {
+      display: inline-block; background: #e67e22; color: white;
+      padding: 1px 5px; border-radius: 4px; font-size: 0.65em;
+      margin-left: 5px; vertical-align: text-bottom;
+  }
+   
+  .sign-row { display: flex; justify-content: space-between; margin-top: 40px; gap: 50px; }
+  .sign-col { flex: 1; border-top: 2px solid #333; padding-top: 10px; text-align: center; font-weight: bold; font-size: 1.1em; }
+
+  .img-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+  .img-modal img { max-width: 95%; max-height: 80%; border: 2px solid #fff; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+  .modal-tip { color: #fff; font-size: 1.1em; margin-bottom: 15px; font-weight: bold; text-align: center; background: rgba(0,0,0,0.6); padding: 8px 20px; border-radius: 30px; }
+  .modal-close { margin-top: 20px; padding: 10px 30px; background: #e74c3c; color: white; border: none; border-radius: 50px; font-size: 1.1em; cursor: pointer; font-weight: bold; }
+
+  @media print {
+    .no-print { display: none !important; }
+    #pageForm { display: none !important; }
+    .report-scroll-wrapper { overflow: visible !important; }
+    #pageReport { display: block !important; border: none; padding: 0; margin: 0; width: 100%; min-width: 0; }
+  }
+</style>
 </head>
 <body>
 
-    <!-- 錯誤顯示面板 -->
-    <div id="debug-console">
-        <div id="debug-title">🚨 系統發生錯誤 (Debug Mode)</div>
-        <p>請將下方訊息截圖給管理員：</p>
-        <hr style="border-color: #555; margin: 10px 0;">
+<div class="container">
+   
+  <div id="pageForm">
+    <h1><span class="badge-school">勝利國中</span> 115學年度 適性輔導安置<br>志願選填模擬系統</h1>
+    <div class="subtitle">包含新竹縣/市所有校系 • 依據115學年度最新開缺資料模擬</div>
+    
+    <div class="welcome-box">
+      <span class="welcome-title">👋 各位家長與同學好，請留意以下選填規則：</span>
+      <ul class="welcome-list">
+        <li>本系統為<strong>勝利國中模擬練習用</strong>，實際名額以簡章為準。</li>
+        <li>請依序選填<strong>至少 15 個</strong>志願。(若可選志願總數不足15個，請<strong>全部勾選</strong>)。</li>
+        <li><strong>前 3 個志願</strong>原則上須為「<strong>同一職群</strong>」。<br>
+            <span style="color:#e65100; font-size:0.9em;">(註：若該群僅1個志願，則2、3志願需同群；若該群僅2個，則前2志願需填滿)</span>
+        </li>
+        <li>若已選 3 個職群但總名額不足 10 個，可加選第 4 個職群。</li>
+        <li><strong>注意：加選的第 4 職群志願，排序時不可移動至前 3 職群區域內。</strong></li>
+        <li>本系統會<strong>自動儲存</strong>您的進度，若需幫另一位同學選填，請點選「清空重填」。</li>
+      </ul>
     </div>
 
-    <!-- 啟動畫面 -->
-    <div id="root">
-        <div style="height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8;">
-            <div class="loader" style="width: 40px; height: 40px; margin-bottom: 20px;"></div>
-            <div>系統啟動中...</div>
-            <div style="font-size: 12px; margin-top: 10px; opacity: 0.6;">若停留超過 5 秒，代表程式庫可能被阻擋</div>
+    <div class="section">
+      <h2>1. 基本資料</h2>
+      <div class="input-row">
+        <div class="input-group"><label>學生姓名：</label><input type="text" id="inpStudent" oninput="saveToLocalStorage()"></div>
+        <div class="input-group"><label>家長姓名：</label><input type="text" id="inpParent" oninput="saveToLocalStorage()"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>2. 選擇職群</h2>
+      <div id="msgCluster" style="color:#2980b9; display:none; margin-bottom:10px; font-weight:bold;"></div>
+      <div class="cluster-area" id="divClusters"></div>
+      <p style="margin-top:10px; color:#666; font-size:0.9em;">目前已選：<strong id="txtClusterCount" style="color:#e74c3c;">0</strong> 個職群</p>
+    </div>
+
+    <div class="section">
+      <h2>3. 勾選志願 (請至少選 15 個，若不足則全選)</h2>
+      <div class="pool-header">
+          <span style="font-size:0.9em;color:#555;">點選下方卡片加入清單</span>
+          <button class="btn-select-all" onclick="window.appSelectAll()">✅ 全選本區</button>
+      </div>
+      <div class="pool-area" id="divPool">請先在上方點選職群...</div>
+      <div style="text-align:right;">
+        <div class="count-display">
+          已勾選 <span id="txtSel" style="color:#27ae60;">0</span> 個 / 
+          本區共 <span id="txtTotal" style="color:#2980b9;">0</span> 個可選
         </div>
+      </div>
     </div>
 
-    <script type="text/babel">
-        // ==========================================
-        //  設定區域
-        // ==========================================
+    <div class="section">
+      <h2>4. 志願排序 (請按住拖曳)</h2>
+      <div id="msgError" style="background:#ffebee; color:#c62828; padding:10px; border:1px solid #ef9a9a; border-radius:5px; display:none; font-weight:bold; margin-bottom:10px;"></div>
+      <ul id="sortList"></ul>
+    </div>
 
-        const ADMIN_PASSWORD = "admin888"; 
+    <div class="btn-zone">
+      <button type="button" class="btn btn-main" onclick="window.appGenerateReport()">產生確認表</button>
+      <button type="button" class="btn btn-clear" onclick="window.appClearAll()">清空重填</button>
+    </div>
+  </div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDe-m-4ZQY5ygJWpC3Q7itoWHPs4uzbadY",
-            authDomain: "happy-a79dd.firebaseapp.com",
-            projectId: "happy-a79dd",
-            storageBucket: "happy-a79dd.firebasestorage.app",
-            messagingSenderId: "430340297828",
-            appId: "1:430340297828:web:4995ea27ea30bfadb3fb71"
+  <div id="reportContainer" style="display:none;">
+      <div class="scroll-hint">💡 請左右滑動檢查報表完整性</div>
+      <div class="report-scroll-wrapper">
+          <div id="pageReport">
+            <h2 style="text-align:center; border:none; margin-bottom:15px; font-size:1.5em;">115學年度 適性輔導安置<br>志願選填確認表 (勝利國中模擬)</h2>
+            
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:1.05em; border-bottom:2px solid #eee; padding-bottom:10px;">
+              <div>學生：<strong id="outStudent"></strong></div>
+              <div>家長：<strong id="outParent"></strong></div>
+              <div>日期：<span id="outDate"></span></div>
+            </div>
+            
+            <div style="margin-bottom:10px; font-size:1em;"><strong>【已選職群】：</strong><span id="outClusters"></span></div>
+            
+            <table style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th class="col-idx">序</th>
+                  <th class="col-cluster">職群</th>
+                  <th class="col-school">學校 / 科別</th>
+                </tr>
+              </thead>
+              <tbody id="rptBody"></tbody>
+            </table>
+
+            <div class="sign-row">
+              <div class="sign-col">家長簽名<br><span style="font-size:0.8em; color:#999; font-weight:normal;">(請在此處簽名)</span></div>
+              <div class="sign-col">學習中心老師<br><span style="font-size:0.8em; color:#999; font-weight:normal;">(請在此處簽名/核章)</span></div>
+            </div>
+          </div>
+      </div>
+
+      <div class="btn-zone no-print" style="margin-top:20px; padding-bottom:40px;">
+        <button type="button" class="btn btn-save" onclick="window.appSaveImage()">存成圖片</button>
+        <button type="button" class="btn btn-copy" onclick="window.appCopyTxt()">📋 複製內容</button>
+        <button type="button" class="btn btn-dl" onclick="window.appDownloadTxt()">下載文字檔</button>
+        <button type="button" class="btn btn-back" onclick="window.appGoBack()">返回修改</button>
+      </div>
+  </div>
+
+</div>
+
+<script>
+    // ==========================================
+    // 1. 資料庫 (115學年度 勝利國中適性輔導安置 - 12/31更新版)
+    // ==========================================
+    const DB = [
+        {
+            c: "設計群", 
+            cls: "bg-design", 
+            list: [
+                {s:"國立新竹高工", d:"室內空間設計科"},
+                {s:"私立義民高中", d:"廣告設計科"},
+                {s:"私立光復高中", d:"室內設計科"},
+                {s:"私立光復高中", d:"廣告設計科"},
+                {s:"私立光復高中", d:"多媒體設計科"},
+                {s:"市立香山高中", d:"美術工藝科"},
+                {s:"私立內思高中", d:"多媒體設計科"}
+            ]
+        },
+        {
+            c: "電機與電子群", 
+            cls: "bg-electro", 
+            list: [
+                {s:"國立新竹高工", d:"資訊科"},
+                {s:"國立新竹高工", d:"電機科"},
+                {s:"縣立自強高工", d:"資訊科"},
+                {s:"縣立自強高工", d:"電子科"},
+                {s:"國立關西高中", d:"電機科"},
+                {s:"私立磐石高中", d:"電機科"},
+                {s:"國立陽明交大附中", d:"資訊科"},
+                {s:"私立義民高中", d:"資訊科"},
+                {s:"私立光復高中", d:"資訊科"},
+                {s:"私立光復高中", d:"電機科"},
+                {s:"私立內思高中", d:"資訊科"},
+                {s:"私立內思高中", d:"電子科"},
+                {s:"私立內思高中", d:"電機科"}
+            ]
+        },
+        {
+            c: "機械群", 
+            cls: "bg-machine", 
+            list: [
+                {s:"國立新竹高工", d:"板金科"},
+                {s:"國立新竹高工", d:"製圖科"},
+                {s:"國立新竹高工", d:"機械科"},
+                {s:"私立磐石高中", d:"機械科"},
+                {s:"私立內思高中", d:"機械科"}
+            ]
+        },
+        {
+            c: "學術群", 
+            cls: "bg-academic", 
+            list: [
+                {s:"國立新竹高商", d:"綜合高中"},
+                {s:"私立忠信高中", d:"綜合高中"},
+                {s:"私立內思高中", d:"綜合高中"},
+                {s:"國立新竹高中", d:"普通科 (限男生)"},
+                {s:"國立新竹女中", d:"普通科 (限女生)"},
+                {s:"私立磐石高中", d:"普通科"},
+                {s:"國立陽明交大附中", d:"普通科"},
+                {s:"縣立湖口高中", d:"普通科"},
+                {s:"縣立六家高中", d:"普通科"},
+                {s:"國立關西高中", d:"普通科"},
+                {s:"私立東泰高中", d:"普通科"},
+                {s:"私立義民高中", d:"普通科"},
+                {s:"國立竹科實中", d:"普通科"},
+                {s:"市立成德高中", d:"普通科"},
+                {s:"私立曙光女中", d:"普通科 (限女生)"},
+                {s:"私立光復高中", d:"普通科"},
+                {s:"國立竹東高中", d:"普通科"},
+                {s:"私立忠信高中", d:"普通科"},
+                {s:"市立建功高中", d:"普通科"},
+                {s:"市立香山高中", d:"普通科"}
+            ]
+        },
+        {
+            c: "商業與管理群", 
+            cls: "bg-business", 
+            list: [
+                {s:"國立新竹高商", d:"國際貿易科"},
+                {s:"國立新竹高商", d:"資料處理科"},
+                {s:"國立新竹高商", d:"商業經營科"},
+                {s:"私立磐石高中", d:"資料處理科"},
+                {s:"國立陽明交大附中", d:"商業經營科"},
+                {s:"國立關西高中", d:"商業經營科"},
+                {s:"縣立湖口高中", d:"商業經營科"},
+                {s:"私立仰德高中", d:"電子商務科"},
+                {s:"私立東泰高中", d:"資料處理科"},
+                {s:"私立義民高中", d:"資料處理科"},
+                {s:"私立曙光女中", d:"商業經營科 (限女生)"},
+                {s:"私立光復高中", d:"資料處理科"},
+                {s:"市立香山高中", d:"資料處理科"}
+            ]
+        },
+        {
+            c: "家政群", 
+            cls: "bg-home", 
+            list: [
+                {s:"私立仰德高中", d:"時尚造型科"},
+                {s:"私立東泰高中", d:"時尚造型科"},
+                {s:"私立義民高中", d:"幼兒保育科 (限女生)"},
+                {s:"私立光復高中", d:"幼兒保育科"},
+                {s:"私立光復高中", d:"時尚造型科"},
+                {s:"私立光復高中", d:"照顧服務科"},
+                {s:"國立關西高中", d:"家政科"}
+            ]
+        },
+        {
+            c: "食品群", 
+            cls: "bg-food", 
+            list: [
+                {s:"國立關西高中", d:"食品加工科"}
+            ]
+        },
+        {
+            c: "餐旅群", 
+            cls: "bg-hosp", 
+            list: [
+                {s:"國立關西高中", d:"餐飲管理科"},
+                {s:"私立仰德高中", d:"餐飲管理科"},
+                {s:"私立東泰高中", d:"餐飲管理科"},
+                {s:"私立光復高中", d:"餐飲管理科"}
+            ]
+        },
+        {
+            c: "外語群", 
+            cls: "bg-service", 
+            list: [
+                {s:"國立新竹高商", d:"應用英語科"},
+                {s:"私立曙光女中", d:"應用日語科 (限女生)"},
+                {s:"私立曙光女中", d:"應用英語科 (限女生)"},
+                {s:"私立光復高中", d:"應用日語科"},
+                {s:"私立光復高中", d:"應用英語科"}
+            ]
+        },
+        {
+            c: "動力機械群", 
+            cls: "bg-power", 
+            list: [
+                {s:"私立東泰高中", d:"汽車科"},
+                {s:"私立光復高中", d:"汽車科"}
+            ]
+        },
+        {
+            c: "化工群", 
+            cls: "bg-chem", 
+            list: [
+                {s:"縣立自強高工", d:"化工科"},
+                {s:"國立新竹高工", d:"化工科"}
+            ]
+        },
+        {
+            c: "農業群", 
+            cls: "bg-agri", 
+            list: [
+                {s:"國立關西高中", d:"園藝科"},
+                {s:"國立關西高中", d:"畜產保健科"}
+            ]
+        }
+    ];
+
+    let state = { clusters: [], wishes: [], fourth: null, counts: {} };
+
+    // --- 初始化 ---
+    (function init() {
+        DB.forEach(g => { state.counts[g.c] = g.list.length; });
+        
+        // 從 LocalStorage 載入資料
+        loadFromLocalStorage();
+        
+        renderClusters();
+        renderPool();
+        renderSortList();
+        initSortable();
+    })();
+
+    // --- LocalStorage 核心邏輯 ---
+    function saveToLocalStorage() {
+        const dataToSave = {
+            student: document.getElementById('inpStudent').value,
+            parent: document.getElementById('inpParent').value,
+            clusters: state.clusters,
+            wishes: state.wishes,
+            fourth: state.fourth
         };
+        // 更新 Key 避免與舊資料混淆
+        localStorage.setItem('vsm_sim_data_115_v2', JSON.stringify(dataToSave));
+    }
 
-        const PHOTO_IDS = [
-            "1mCnYb4S1kuTe1B7YUoq6ArURQTe5qd1g", "1dUWWSVf9Onp0lLJrK07z1-dPE84vsOgj", "1BbNht3rZ9FKvth96cOnmi765_yJ5gybJ",
-            "1dNKWF1iqWGLNdQ5N8VHZbLC3SPKasD5S", "1BLogX7zHBvVKrYMS_wUbvXFS67oZ2RXy", "1Mst0-I1migSLI7EiSP1yHcRuCwc9z60R",
-            "1ElsbKhTpNYvCm3o7bap4YAvhFMHZFXPR", "18yrSvjmGavaT026VooDxToRkYG6LmaLK", "1T24-fFroOs0cMfrj84S4i_oyu_LYbq7D",
-            "1ZDpt6MguJUsax-UY34wIArflSnkf-Snf", "1G2jFPTQy9ehestEUquxi-Gh-7QH1HLpr", "1TWy8a0fh1iLhfJNX_SseRCNu95Az3Lze",
-            "1HLG4OMUGsekOh2zeT6q2WprVgQR49qIi", "11WdXaj3aHuBmBdpPoZPUjGCZ7iqU0rbk", "1kPUe3rn46E7Z5tiQCFIa_B_8-7AsPOZo",
-            "1nQBOYzNB-eA6puPgP4Ne4eeA28hNa3Nw", "1h0NYurvyYIiAI-c1Miow7ivHp1sqIx1n", "1H_xn29OOViYdBe3hcLiYZ7rHC4x9NmPL",
-            "1TBHFXkqX-YromuzZmX4qi_ZknZGffkho", "16yJigA7wsXiSZMzfQZeQfVHJ2XHqyhHh", "1WRfnA28hye0n0HIWkE07QcwytGtIJJqP",
-            "1V9twJ6qYvXqrxm06fFOzf95wrVTAKVyu", "10L1LiOaqby0gv-ZPG54FzlRQrWm7p4HZ", "1uUlUJgiaBMQV_zcmbmHj_pkw4pwZbZc2",
-            "1ThfQ7RZFZ-pPOCmBj-xOcOFWCA0ExqHe", "1yYb-EQtskGIuYxkEVtH_tU5728oOUHtp", "1j1oIBZI0nisgptAkQnMA08hI5rd5M0ng",
-            "1fiNbYcCASKrC6IiWex0Kty1qK1nfoEO2", "1-r0RAZN2EnR41URD0nAsA3J56PoAJloP", "16Lryo_Z_HmCfqTt3LYDhSDycgQIQa_RC",
-            "1Zfj2HuXdAHPg8ceGFpeZcJVig4JoRnQ3", "1kw2QmHHWShZWUsYWPvytgAJiAvUPVfT4", "1aLnnu9rdz4P42Fjgv-vsJliX8TssskQR",
-            "1YbR0Qe6SlJhWhrDEjr0wAPai4bVWe0NK", "1fyaFdn67r5c8YuSmLk63Tjl1B4OdzXtV", "1qiCwGZi3Q5YorHVKGg_tZ44NHiSN2jsf",
-            "1RE_Np5Jn-rsgOume1o2sD1sMuPb8OCTo", "1Roz3oj4hGT5YN5F_GbbSTYa5IGqxDaQM", "1zF-F_VBMOktKUeVlaB1PpRioCgmLl_tX",
-            "16rSi7PQ7XAIJpCC3uj8isrPxrJP_-c3Y", "1icwX5uRcx9PNTZ9r_Wl7_ZpWryu6e7pY", "1Z03O7rZvmAq1ToCStOIkpeTqHV7lDafv", 
-            "1lUuLdddgafSuJ3t4IGLI7fjZeupePN65", "1WVDOULJWPT5ee9l3ssBauKcOG1Aw4qjp", "1wIOzSn98rXe5j7rj-bBKpmp1QDqNpcz1", 
-            "1Z26m23lKYxffOwDYnz7nsAXPcPncpREv", "1eXcZS7Clyj812CfJF9cCZ5IwZ7JFOKRc",
-        ];
+    function loadFromLocalStorage() {
+        const savedData = localStorage.getItem('vsm_sim_data_115_v2');
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                document.getElementById('inpStudent').value = parsed.student || "";
+                document.getElementById('inpParent').value = parsed.parent || "";
+                state.clusters = parsed.clusters || [];
+                state.wishes = parsed.wishes || [];
+                state.fourth = parsed.fourth || null;
+            } catch (e) {
+                console.error("載入快取失敗", e);
+            }
+        }
+    }
 
-        // 檢查 React 是否成功載入
-        if (!window.React || !window.ReactDOM) {
-            throw new Error("React 核心庫載入失敗，請檢查網路連線");
+    window.appClearAll = function() {
+        if (confirm("這將清空所有已選填的志願與姓名，確定嗎？")) {
+            localStorage.removeItem('vsm_sim_data_115_v2');
+            location.reload();
+        }
+    };
+
+    // --- 職群邏輯 ---
+    function renderClusters() {
+        const div = document.getElementById('divClusters');
+        div.innerHTML = '';
+        DB.forEach(g => {
+            const btn = document.createElement('div');
+            btn.className = 'c-btn';
+            btn.innerText = g.c;
+            if (state.clusters.includes(g.c)) {
+                btn.classList.add('active');
+                if (g.c === state.fourth) btn.classList.add('fourth');
+            }
+            btn.onclick = () => toggleCluster(g.c);
+            div.appendChild(btn);
+        });
+
+        document.getElementById('txtClusterCount').innerText = state.clusters.length;
+        const msg = document.getElementById('msgCluster');
+        let top3Count = 0;
+        state.clusters.forEach(c => { if (c !== state.fourth) top3Count += state.counts[c]; });
+
+        if (state.clusters.length === 3 && top3Count < 10) {
+            msg.style.display = 'block';
+            msg.innerText = `⚠️ 選取 3 個職群總額僅 ${top3Count} 個 (少於10個)，可加選第 4 群！`;
+        } else if (state.clusters.length === 4) {
+            msg.style.display = 'block';
+            msg.innerText = `✅ 已加選第 4 職群：${state.fourth}`;
+        } else {
+            msg.style.display = 'none';
+        }
+    }
+
+    function toggleCluster(cName) {
+        if (state.clusters.includes(cName)) {
+            // [UX安全] 如果該職群已有志願，跳出警告
+            if (state.wishes.some(w => w.c === cName)) {
+                if (!confirm(`您在「${cName}」已經選了志願。\n取消此職群將會「刪除」這些志願排序，確定嗎？`)) {
+                    return;
+                }
+            }
+
+            state.clusters = state.clusters.filter(c => c !== cName);
+            if (cName === state.fourth) state.fourth = null;
+            state.wishes = state.wishes.filter(w => w.c !== cName);
+            if (state.clusters.length <= 3) state.fourth = null;
+        } else {
+            if (state.clusters.length < 3) {
+                state.clusters.push(cName);
+            } else if (state.clusters.length === 3) {
+                let currentTotal = 0;
+                state.clusters.forEach(c => currentTotal += state.counts[c]);
+                if (currentTotal < 10) {
+                    state.clusters.push(cName);
+                    state.fourth = cName;
+                } else {
+                    alert("已選 3 個職群且名額充足，不可加選！");
+                    return;
+                }
+            } else {
+                alert("最多僅能選擇 4 個職群！");
+                return;
+            }
+        }
+        renderClusters();
+        renderPool();
+        renderSortList();
+        saveToLocalStorage();
+    }
+
+    // --- 志願池邏輯 ---
+    function renderPool() {
+        const pool = document.getElementById('divPool');
+        pool.innerHTML = '';
+        let totalOpts = 0;
+
+        if (state.clusters.length === 0) {
+            pool.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:#888;">請先在上方點選職群...</div>';
+            updateStats(0, 0);
+            return;
         }
 
-        // 初始化 Firebase
-        let db = null;
-        let auth = null;
+        state.clusters.forEach(cName => {
+            const grp = DB.find(g => g.c === cName);
+            if (!grp) return;
+            totalOpts += grp.list.length;
+
+            grp.list.forEach(item => {
+                const uid = `${cName}-${item.s}-${item.d}`;
+                const isSelected = state.wishes.some(w => w.uid === uid);
+                const is4 = (cName === state.fourth);
+
+                const card = document.createElement('div');
+                card.className = `s-card ${grp.cls}`;
+                if (is4) card.style.border = '2px dashed #e67e22';
+
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.checked = isSelected;
+                
+                const lbl = document.createElement('label');
+                const badge = is4 ? ' <span style="color:#d35400;font-size:0.8em;font-weight:bold;">(加選)</span>' : '';
+                lbl.innerHTML = `<strong>${item.s}</strong>${badge}<br>${item.d} <span style="font-size:0.85em;color:#666;">(${cName})</span>`;
+
+                const toggle = () => {
+                    const idx = state.wishes.findIndex(w => w.uid === uid);
+                    if (idx > -1) {
+                        state.wishes.splice(idx, 1);
+                    } else {
+                        state.wishes.push({uid, s:item.s, d:item.d, c:cName, cls:grp.cls, is4});
+                        // 新增時自動分區排序 (非4在前, 4在後)
+                        state.wishes.sort((a, b) => {
+                            if (a.is4 === b.is4) return 0;
+                            return a.is4 ? 1 : -1;
+                        });
+                    }
+                    renderPool();
+                    renderSortList();
+                    saveToLocalStorage();
+                };
+
+                card.onclick = (e) => { if (e.target.tagName !== 'INPUT') toggle(); };
+                
+                card.appendChild(chk);
+                card.appendChild(lbl);
+                pool.appendChild(card);
+            });
+        });
+        updateStats(state.wishes.length, totalOpts);
+    }
+
+    window.appSelectAll = function() {
+        if (state.clusters.length === 0) return;
+        let hasNew = false;
+        state.clusters.forEach(cName => {
+            const grp = DB.find(g => g.c === cName);
+            if (!grp) return;
+            const is4 = (cName === state.fourth);
+            grp.list.forEach(item => {
+                const uid = `${cName}-${item.s}-${item.d}`;
+                if (!state.wishes.some(w => w.uid === uid)) {
+                    state.wishes.push({uid, s:item.s, d:item.d, c:cName, cls:grp.cls, is4});
+                    hasNew = true;
+                }
+            });
+        });
+
+        if(hasNew) {
+            state.wishes.sort((a, b) => {
+                if (a.is4 === b.is4) return 0;
+                return a.is4 ? 1 : -1;
+            });
+            renderPool();
+            renderSortList();
+            saveToLocalStorage();
+        }
+    };
+
+    function updateStats(sel, total) {
+        document.getElementById('txtSel').innerText = sel;
+        document.getElementById('txtTotal').innerText = total;
+        state.currentTotalAvailable = total;
+    }
+
+    // --- 排序區 ---
+    function renderSortList() {
+        const list = document.getElementById('sortList');
+        list.innerHTML = '';
+        state.wishes.forEach((w, idx) => {
+            const li = document.createElement('li');
+            li.className = `sort-li ${w.cls}`;
+            li.setAttribute('data-uid', w.uid);
+            if (w.is4) {
+                li.classList.add('is-fourth-item');
+                li.style.border = '2px dashed #e67e22';
+            }
+
+            const tag4 = w.is4 ? '<span class="tag" style="background:#ffecb3;color:#d35400">第4職群</span>' : '';
+            li.innerHTML = `
+                <div class="idx-circle">${idx + 1}</div>
+                <div class="info-block">
+                    <div class="info-top">${w.s}</div>
+                    <div class="info-btm">${w.d} <span class="tag">${w.c}</span>${tag4}</div>
+                </div>
+                <div class="del-x">✕</div>
+            `;
+            li.querySelector('.del-x').onclick = () => {
+                state.wishes = state.wishes.filter(x => x.uid !== w.uid);
+                renderPool();
+                renderSortList();
+                saveToLocalStorage();
+            };
+            list.appendChild(li);
+        });
+        validateRules();
+    }
+
+    function initSortable() {
+        const el = document.getElementById('sortList');
+        let check = setInterval(() => {
+            if (typeof Sortable !== 'undefined') {
+                clearInterval(check);
+                Sortable.create(el, {
+                    animation: 150,
+                    onMove: function (evt) {
+                        var draggedItem = evt.dragged;
+                        var targetItem = evt.related;
+                        var isDraggedFourth = draggedItem.classList.contains('is-fourth-item');
+                        var isTargetFourth = targetItem.classList.contains('is-fourth-item');
+                        if (isDraggedFourth && !isTargetFourth) return false;
+                        if (!isDraggedFourth && isTargetFourth) return false;
+                        return true;
+                    },
+                    onEnd: () => {
+                        const newOrderIds = Array.from(el.children).map(li => li.getAttribute('data-uid'));
+                        const newWishes = [];
+                        newOrderIds.forEach(uid => {
+                            const found = state.wishes.find(w => w.uid === uid);
+                            if (found) newWishes.push(found);
+                        });
+                        state.wishes = newWishes;
+                        renderSortList();
+                        saveToLocalStorage();
+                    }
+                });
+            }
+        }, 500);
+    }
+
+    function validateRules() {
+        const errBox = document.getElementById('msgError');
+        const items = document.querySelectorAll('.sort-li');
+        items.forEach(i => i.classList.remove('err-active'));
+        errBox.style.display = 'none';
+
+        if (state.wishes.length === 0) return true;
+
+        let fail = false;
+        let msg = '';
+        const c1 = state.wishes[0].c;
+        const limit = state.counts[c1] || 10;
+
+        if (limit >= 3) {
+            if (state.wishes.length >= 3 && (state.wishes[1].c !== c1 || state.wishes[2].c !== c1)) {
+                fail = true; msg = `⚠️ 第 1 志願「${c1}」名額充足，前 3 志願須為同一職群！`;
+                if(items[0]) items[0].classList.add('err-active');
+                if(items[1]) items[1].classList.add('err-active');
+                if(items[2]) items[2].classList.add('err-active');
+            }
+        } else if (limit === 2) {
+            if (state.wishes.length >= 2 && state.wishes[1].c !== c1) {
+                fail = true; msg = `⚠️ 第 1 志願「${c1}」僅 2 個名額，前 2 志願須填滿！`;
+                items[0].classList.add('err-active');
+                items[1].classList.add('err-active');
+            }
+        } else if (limit === 1) {
+            if (state.wishes.length >= 3 && state.wishes[1].c !== state.wishes[2].c) {
+                fail = true; msg = `⚠️ 第 1 志願名額僅 1 個，扣除後，餘下「第 2、3 志願」須為同一職群！`;
+                items[1].classList.add('err-active');
+                items[2].classList.add('err-active');
+            }
+        }
+
+        if (state.fourth) {
+            for (let i = 0; i < Math.min(3, state.wishes.length); i++) {
+                if (state.wishes[i].c === state.fourth) {
+                    fail = true; msg = "⚠️ 加選的第 4 職群不可排在前 3 志願！";
+                    items[i].classList.add('err-active'); break;
+                }
+            }
+        }
+
+        if (fail) {
+            errBox.innerText = msg;
+            errBox.style.display = 'block';
+            return false;
+        }
+        return true;
+    }
+
+    // --- 報表生成與輸出 ---
+    window.appGenerateReport = function() {
         try {
-            if (typeof firebase === 'undefined') {
-                throw new Error("Firebase SDK 載入失敗 (firebase is undefined)");
+            const s = document.getElementById('inpStudent').value.trim();
+            const p = document.getElementById('inpParent').value.trim();
+            if (!s || !p) { alert("請輸入學生與家長姓名！"); return; }
+            
+            const totalAvail = state.currentTotalAvailable || 0;
+            if (totalAvail >= 15 && state.wishes.length < 15) {
+                alert(`共有 ${totalAvail} 個志願可選，請至少選填 15 個！`); return;
             }
-            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            auth = firebase.auth();
-            console.log("Firebase 準備就緒");
-        } catch (e) { 
-            console.error("Firebase Init Error:", e);
-            // 這裡不 throw，讓介面可以顯示，但標記為離線模式
-        }
+            if (totalAvail < 15 && state.wishes.length < totalAvail) {
+                alert(`僅有 ${totalAvail} 個志願可選，請全部勾選！`); return;
+            }
 
-        const { useState, useEffect, useMemo, useRef } = React;
-        const COLLECTION_PATH = "meme_vote_2025_records"; 
+            if (!validateRules()) { 
+                alert("志願排序有誤，請修正！");
+                document.getElementById('msgError').scrollIntoView({behavior:'smooth'});
+                return; 
+            }
 
-        const MEME_DATA = PHOTO_IDS.map((id, i) => ({
-            id: i + 1,
-            url: `https://lh3.googleusercontent.com/d/${id}=s800`,
-            title: `年度梗圖 #${i + 1}`,
-        }));
+            document.getElementById('outStudent').innerText = s;
+            document.getElementById('outParent').innerText = p;
+            const d = new Date();
+            document.getElementById('outDate').innerText = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+            
+            let cList = state.clusters.join('、');
+            if (state.fourth) cList += ` (含加選：${state.fourth})`;
+            document.getElementById('outClusters').innerText = cList;
 
-        // --- 簡易彩帶特效 ---
-        const Confetti = () => {
-            const canvasRef = useRef(null);
-            useEffect(() => {
-                const canvas = canvasRef.current;
-                const ctx = canvas.getContext('2d');
-                let width = window.innerWidth;
-                let height = window.innerHeight;
-                canvas.width = width;
-                canvas.height = height;
-
-                const particles = [];
-                const colors = ['#FFD700', '#FF1493', '#00FFFF', '#7FFF00', '#FF4500'];
-
-                for(let i=0; i<150; i++) {
-                    particles.push({
-                        x: Math.random() * width,
-                        y: Math.random() * height - height,
-                        w: Math.random() * 10 + 5,
-                        h: Math.random() * 10 + 5,
-                        color: colors[Math.floor(Math.random() * colors.length)],
-                        speed: Math.random() * 5 + 2,
-                        angle: Math.random() * 360
-                    });
-                }
-
-                let animationId;
-                const draw = () => {
-                    ctx.clearRect(0, 0, width, height);
-                    particles.forEach(p => {
-                        ctx.fillStyle = p.color;
-                        ctx.save();
-                        ctx.translate(p.x, p.y);
-                        ctx.rotate(p.angle * Math.PI / 180);
-                        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-                        ctx.restore();
-                        p.y += p.speed;
-                        p.angle += 2;
-                        if(p.y > height) p.y = -20;
-                    });
-                    animationId = requestAnimationFrame(draw);
+            const tbody = document.getElementById('rptBody');
+            tbody.innerHTML = '';
+            state.wishes.forEach((w, i) => {
+                const tr = document.createElement('tr');
+                const colorMap = {
+                    'bg-academic': '#e3f2fd', 'bg-machine': '#e0f7fa', 'bg-power': '#e8f5e9',
+                    'bg-electro': '#fffde7', 'bg-business': '#f3e5f5', 'bg-design': '#fce4ec',
+                    'bg-home': '#f3e5f5', 'bg-hosp': '#fff3e0', 'bg-food': '#e0f2f1',
+                    'bg-agri': '#f1f8e9', 'bg-service': '#e8eaf6', 'bg-chem': '#e1f5fe'
                 };
-                draw();
-                return () => cancelAnimationFrame(animationId);
-            }, []);
-            return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-50" />;
-        };
+                if(colorMap[w.cls]) tr.style.backgroundColor = colorMap[w.cls];
 
-        // --- 登入畫面組件 ---
-        const LoginScreen = ({ onLogin }) => {
-            const [name, setName] = useState("");
-            const [error, setError] = useState("");
+                const badge = w.is4 ? ' <span class="badge-fourth">加選</span>' : '';
+                tr.innerHTML = `
+                    <td style="text-align:center;font-weight:bold;">${i+1}</td>
+                    <td style="text-align:center;">${w.c}</td>
+                    <td><span style="font-weight:bold;">${w.s}</span><br>${w.d}${badge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
 
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                const cleanName = name.trim();
-                if (!cleanName) { setError("請輸入全名"); return; }
-                if (cleanName.length < 2) { setError("名字太短囉"); return; }
-                onLogin(cleanName);
-            };
+            document.getElementById('pageForm').style.display = 'none';
+            document.getElementById('reportContainer').style.display = 'block';
+            document.getElementById('pageReport').style.display = 'block'; 
+            window.scrollTo(0, 0);
 
-            return (
-                <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-                    <div className="max-w-md w-full glass-panel p-8 rounded-3xl shadow-2xl text-center border border-white/10">
-                        <div className="mb-6 inline-block p-4 rounded-full bg-pink-500/10 text-pink-500"><i className="fas fa-user-astronaut text-4xl"></i></div>
-                        <h2 className="text-2xl font-black text-white mb-2">歡迎來到2025梗圖大賞</h2>
-                        <p className="text-slate-400 mb-8 text-sm">請輸入您的全名以開始投票</p>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <input type="text" value={name} onChange={(e) => {setName(e.target.value); setError("");}} placeholder="例如：01王小明" className="w-full bg-slate-800/50 border border-slate-600 text-white px-5 py-4 rounded-xl text-lg text-center focus:border-pink-500 transition-all outline-none input-glow placeholder-slate-600"/>
-                            {error && <div className="text-red-400 text-sm animate-pulse"><i className="fas fa-exclamation-circle"></i> {error}</div>}
-                            <button type="submit" className="w-full py-4 bg-gradient-to-r from-pink-600 to-purple-600 rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] active:scale-95 transition-all">開始投票 <i className="fas fa-arrow-right ml-2"></i></button>
-                        </form>
-                    </div>
-                </div>
-            );
-        };
+        } catch (e) { alert("錯誤：" + e.message); }
+    };
 
-        // --- 頒獎典禮組件 ---
-        const AwardsCeremony = ({ memes, onExit }) => {
-            const [step, setStep] = useState(0); 
-            const top5 = memes.slice(0, 5); 
-            const currentRank = 5 - (step - 1); 
-            const currentMeme = step > 0 && step <= 5 ? top5[currentRank - 1] : null;
+    window.appGoBack = function() {
+        document.getElementById('reportContainer').style.display = 'none';
+        document.getElementById('pageForm').style.display = 'block';
+        window.scrollTo(0, 0);
+    };
 
-            const nextStep = () => { if (step < 6) setStep(step + 1); else onExit(); };
-            const prevStep = () => { if (step > 0) setStep(step - 1); };
+    function getReportText() {
+        const s = document.getElementById('outStudent').innerText;
+        let txt = `115學年度 適性輔導安置 - 志願選填確認表 (勝利國中模擬)\n`;
+        txt += `========================================\n`;
+        txt += `學生：${s}\n`;
+        txt += `家長：${document.getElementById('outParent').innerText}\n`;
+        txt += `職群：${document.getElementById('outClusters').innerText}\n`;
+        txt += `========================================\n`;
+        state.wishes.forEach((w, i) => {
+            const n = w.is4 ? " [加選]" : "";
+            txt += `第 ${i+1} 志願：${w.s} - ${w.d} (${w.c})${n}\n`;
+        });
+        return txt;
+    }
 
-            useEffect(() => {
-                const handleKey = (e) => {
-                    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') nextStep();
-                    if (e.key === 'ArrowLeft') prevStep();
-                };
-                window.addEventListener('keydown', handleKey);
-                return () => window.removeEventListener('keydown', handleKey);
-            }, [step]);
-
-            if (step === 0) {
-                return (
-                    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center cursor-pointer spotlight" onClick={nextStep}>
-                        <div className="text-pink-500 text-xl font-bold mb-4 tracking-widest animate-pulse">2025 ANNUAL AWARDS</div>
-                        <h1 className="text-6xl md:text-8xl font-black text-white mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">頒獎典禮</h1>
-                        <p className="text-slate-400 text-lg animate-bounce mt-10">點擊螢幕或按空白鍵開始</p>
-                    </div>
-                );
-            }
-
-            if (step === 6) {
-                return (
-                    <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center text-center p-4">
-                         <Confetti />
-                         <h2 className="text-4xl font-bold text-yellow-400 mb-8">🎉 恭喜所有得獎者！</h2>
-                         <div className="flex gap-4 overflow-x-auto p-4 max-w-full no-scrollbar">
-                            {top5.map((m, i) => (
-                                <div key={m.id} className="min-w-[150px] bg-slate-800 rounded-xl p-3 border border-white/10">
-                                    <div className="text-2xl font-black text-slate-500 mb-2">#{i+1}</div>
-                                    <img src={m.url} className="w-full h-24 object-cover rounded-lg mb-2" />
-                                    <div className="text-xs text-white truncate">{m.title}</div>
-                                </div>
-                            ))}
-                         </div>
-                         <button onClick={onExit} className="mt-10 px-8 py-3 bg-slate-800 rounded-full text-slate-300 hover:bg-slate-700 transition z-50 relative">結束頒獎</button>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-4 spotlight transition-all duration-500" onClick={nextStep}>
-                    {currentRank === 1 && <Confetti />}
-                    <div className={`text-2xl font-bold mb-4 tracking-widest uppercase ${currentRank === 1 ? 'text-yellow-400' : currentRank === 2 ? 'text-slate-300' : currentRank === 3 ? 'text-orange-400' : 'text-slate-500'}`}>Top {currentRank}</div>
-                    <div className="relative w-full max-w-2xl aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 slide-in-bottom">
-                         <img src={currentMeme.url} className="w-full h-full object-contain bg-slate-900" />
-                         <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black via-black/80 to-transparent flex items-end justify-between">
-                             <div>
-                                 <div className="text-pink-500 font-mono font-bold text-xl mb-1">#{currentMeme.id}</div>
-                                 <h2 className="text-3xl md:text-5xl font-black text-white">{currentMeme.title}</h2>
-                             </div>
-                             <div className="text-right">
-                                 <div className="text-6xl font-black text-yellow-400 leading-none">{currentMeme.count}</div>
-                                 <div className="text-slate-400 font-bold uppercase tracking-wider text-sm">Votes</div>
-                             </div>
-                         </div>
-                         <div className={`absolute top-6 right-6 w-20 h-20 rounded-full flex items-center justify-center text-4xl font-black shadow-lg ${currentRank === 1 ? 'bg-yellow-500 text-yellow-900' : currentRank === 2 ? 'bg-slate-300 text-slate-900' : currentRank === 3 ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 border border-white/20'}`}>{currentRank}</div>
-                    </div>
-                    <p className="mt-8 text-slate-500 text-sm animate-pulse">點擊任意處揭曉下一名</p>
-                </div>
-            );
-        };
-
-        // --- 排行榜組件 ---
-        const ResultsView = ({ votes, onBack, totalVotes }) => {
-            const [showAwards, setShowAwards] = useState(false);
-
-            const sortedMemes = useMemo(() => {
-                const counts = {};
-                MEME_DATA.forEach(m => counts[m.id] = 0);
-                Object.values(votes).forEach(choices => {
-                    if (Array.isArray(choices)) choices.forEach(id => { if(counts[id] !== undefined) counts[id]++; });
-                });
-                return MEME_DATA.map(m => ({ ...m, count: counts[m.id] }))
-                    .sort((a, b) => b.count - a.count || a.id - b.id);
-            }, [votes]);
-            const maxVotes = Math.max(...sortedMemes.map(m => m.count), 1);
-
-            if (showAwards) return <AwardsCeremony memes={sortedMemes} onExit={() => setShowAwards(false)} />;
-
-            return (
-                <div className="min-h-screen bg-slate-900 pt-16 px-4 pb-20">
-                    <div className="max-w-3xl mx-auto">
-                        <div className="flex justify-between items-center mb-8">
-                            <button onClick={onBack} className="text-slate-400 hover:text-white px-4 py-2 rounded-xl bg-slate-800 transition"><i className="fas fa-arrow-left"></i> 返回</button>
-                            <div className="flex gap-2">
-                                <div className="text-slate-500 text-xs self-center">總票數: {totalVotes}</div>
-                                <button onClick={() => setShowAwards(true)} className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold px-4 py-2 rounded-xl shadow-lg hover:scale-105 transition flex items-center gap-2">
-                                    <i className="fas fa-film"></i> 進入頒獎典禮
-                                </button>
-                            </div>
-                        </div>
-                        <h2 className="text-3xl font-black text-center mb-10 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500">🏆 即時戰況</h2>
-                        <div className="space-y-3">
-                            {sortedMemes.map((m, i) => (
-                                <div key={m.id} className="relative glass-panel rounded-2xl p-4 flex items-center gap-4 overflow-hidden shadow-xl hover:bg-slate-800/80 transition">
-                                    <div className="absolute left-0 top-0 bottom-0 bg-pink-500/10 transition-all duration-1000" style={{width: `${(m.count/maxVotes)*100}%`}}></div>
-                                    <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg font-black text-lg ${i<3 ? 'bg-yellow-500 text-yellow-950' : 'bg-slate-700 text-slate-400'}`}>{i + 1}</div>
-                                    <div className="w-14 h-11 rounded bg-slate-900 overflow-hidden flex-shrink-0 z-10"><img src={m.url} className="w-full h-full object-cover" /></div>
-                                    <div className="flex-1 font-bold truncate z-10">{m.title}</div>
-                                    <div className="text-right z-10"><span className="text-2xl font-black text-pink-400">{m.count}</span><span className="text-xs text-slate-500">票</span></div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        function App() {
-            const [userName, setUserName] = useState(""); 
-            const [selectedIds, setSelectedIds] = useState([]);
-            const [hasVoted, setHasVoted] = useState(false);
-            const [viewResults, setViewResults] = useState(false);
-            const [allVotes, setAllVotes] = useState({});
-            const [isSubmitting, setIsSubmitting] = useState(false);
-            const [loading, setLoading] = useState(true);
-            const MAX_VOTES = 5; 
-
-            useEffect(() => {
-                if (!db || !auth) { 
-                    // 如果 Firebase 沒載入，不要一直卡在 Loading，讓使用者進去但無法投票
-                    console.warn("Firebase 未載入，進入離線模式");
-                    setLoading(false); 
-                    return; 
-                }
-
-                // 設定 5 秒超時，避免卡死
-                const timeoutId = setTimeout(() => {
-                    console.warn("Firebase 連線逾時，強制進入 UI");
-                    setLoading(false);
-                }, 5000);
-
-                auth.signInAnonymously().then(() => {
-                    db.collection(COLLECTION_PATH).onSnapshot(snapshot => {
-                        clearTimeout(timeoutId); 
-                        const data = {};
-                        snapshot.forEach(doc => data[doc.id] = doc.data().choices);
-                        setAllVotes(data);
-                        setLoading(false);
-                    }, error => {
-                        console.error("Firestore Read Error:", error);
-                        // 權限錯誤也解開 Loading，讓使用者看到錯誤提示
-                        setLoading(false);
-                    });
-                }).catch(e => { 
-                    console.error("Auth Error:", e); 
-                    setLoading(false); 
-                });
-
-                return () => clearTimeout(timeoutId);
-            }, []);
-
-            const handleLogin = (name) => {
-                setUserName(name);
-                if (allVotes[name]) { setHasVoted(true); setSelectedIds(allVotes[name]); alert(`歡迎回來，${name}！`); }
-            };
-
-            const toggle = (id) => {
-                if (hasVoted) return;
-                if (selectedIds.includes(id)) setSelectedIds(prev => prev.filter(i => i !== id));
-                else if (selectedIds.length < MAX_VOTES) setSelectedIds(prev => [...prev, id]);
-            };
-
-            const submit = async () => {
-                if (selectedIds.length === 0 || isSubmitting) return;
-                setIsSubmitting(true);
-                try {
-                    await db.collection(COLLECTION_PATH).doc(userName).set({
-                        choices: selectedIds,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                        device: navigator.userAgent
-                    });
-                    setHasVoted(true);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                } catch (e) { alert("投票失敗 (可能是網路或權限問題)：" + e.message); } finally { setIsSubmitting(false); }
-            };
-
-            const handleAdminReset = async () => {
-                const pwd = prompt("密碼：");
-                if (pwd === ADMIN_PASSWORD && confirm("確定刪除所有資料？")) {
-                    setIsSubmitting(true);
-                    try {
-                        const snapshot = await db.collection(COLLECTION_PATH).get();
-                        const batch = db.batch();
-                        snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                        await batch.commit();
-                        alert("已重置");
-                        window.location.reload();
-                    } catch (e) { alert("錯誤：" + e.message); } finally { setIsSubmitting(false); }
-                }
-            };
-
-            if (loading) return (
-                <div className="h-screen flex flex-col items-center justify-center text-slate-500">
-                    <div className="loader mb-4"></div>
-                    <div>資料讀取中...</div>
-                    <div className="text-xs mt-2 opacity-50">若卡住請重新整理</div>
-                </div>
-            );
-
-            if (!userName && !viewResults) return <div><LoginScreen onLogin={handleLogin} /><div className="fixed bottom-4 right-4 text-slate-800 text-[10px]" onClick={handleAdminReset}>Reset</div></div>;
-
-            if (viewResults) return <ResultsView votes={allVotes} onBack={() => setViewResults(false)} totalVotes={Object.keys(allVotes).length} />;
-
-            return (
-                <div className="min-h-screen bg-slate-900 text-white font-sans pb-40">
-                    <header className="pt-10 pb-6 px-4 text-center relative">
-                        <div className="flex justify-between items-center max-w-4xl mx-auto mb-4 px-2">
-                             <div className="text-xs text-slate-500 font-mono">USER: {userName}</div>
-                             <button onClick={() => setViewResults(true)} className="glass-panel text-yellow-400 text-xs px-4 py-2 rounded-full hover:bg-slate-800 transition flex items-center gap-2"><i className="fas fa-chart-bar"></i> 戰況</button>
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">資優班梗圖大賞</h1>
-                        <p className="text-slate-400 text-sm">每人 5 票，選出年度經典！</p>
-                    </header>
-                    <main className="max-w-7xl mx-auto px-4">
-                        {hasVoted ? (
-                            <div className="max-w-md mx-auto glass-panel rounded-3xl p-10 text-center mt-10">
-                                <div className="text-6xl mb-4">🎉</div><h2 className="text-2xl font-bold mb-2">投票完成！</h2>
-                                <button onClick={() => setViewResults(true)} className="w-full py-3 bg-purple-600 rounded-xl font-bold shadow-lg mt-4">觀看排行榜</button>
-                                <button onClick={() => window.location.reload()} className="mt-4 text-xs text-slate-500">登出</button>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                                {MEME_DATA.map((meme) => {
-                                    const isSelected = selectedIds.includes(meme.id);
-                                    const isLocked = selectedIds.length >= MAX_VOTES && !isSelected;
-                                    return (
-                                        <div key={meme.id} className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-200 group ${isSelected ? 'card-selected' : 'border border-white/5'} ${isLocked ? 'opacity-40 grayscale' : 'opacity-100'}`} onClick={() => toggle(meme.id)}>
-                                            <div className="aspect-[4/3] bg-slate-950 relative">
-                                                <img src={meme.url} className="w-full h-full object-cover" loading="lazy" />
-                                                {isSelected && <div className="absolute inset-0 bg-pink-600/40 flex items-center justify-center"><i className="fas fa-check text-2xl text-white"></i></div>}
-                                                <div className="absolute top-1 left-1 px-1.5 rounded bg-black/50 text-[10px] font-mono">#{meme.id}</div>
-                                            </div>
-                                            <div className={`p-2 text-center text-xs font-bold ${isSelected ? 'bg-pink-900/50 text-white' : 'bg-slate-800 text-slate-400'}`}>{isSelected ? '已選擇' : '投票'}</div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </main>
-                    {!hasVoted && (
-                        <div className="fixed bottom-6 left-0 w-full flex justify-center px-4 pointer-events-none z-50">
-                            <button onClick={submit} disabled={selectedIds.length === 0 || isSubmitting} className={`pointer-events-auto shadow-2xl px-8 py-3 rounded-full font-bold text-lg flex items-center gap-2 transition-all transform ${selectedIds.length > 0 ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white scale-105' : 'bg-slate-800 text-slate-500 opacity-80'}`}>
-                                {isSubmitting ? '處理中...' : selectedIds.length > 0 ? `送出 ${selectedIds.length} 票` : '請選擇圖片'}
-                            </button>
-                        </div>
-                    )}
-                    <div className="fixed bottom-2 right-2 text-slate-800 hover:text-red-800 cursor-pointer text-[10px] select-none" onClick={handleAdminReset}><i className="fas fa-trash"></i> Reset</div>
-                </div>
-            );
+    window.appCopyTxt = function() {
+        try {
+            const txt = getReportText();
+            navigator.clipboard.writeText(txt).then(() => {
+                alert("✅ 已複製志願文字！\n請直接貼上 (Ctrl+V) 分享給老師或家長。");
+            }).catch(err => {
+                alert("複製失敗，請手動下載文字檔。");
+            });
+        } catch (e) {
+            alert("瀏覽器不支援一鍵複製，請使用下載文字檔功能。");
         }
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+    };
+
+    window.appDownloadTxt = function() {
+        try {
+            const txt = getReportText();
+            const s = document.getElementById('outStudent').innerText;
+            const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${s}_志願表.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch(e) { alert("下載失敗"); }
+    };
+
+    window.appSaveImage = function() {
+        var div = document.getElementById('pageReport');
+        var originalWidth = div.style.width;
+        div.style.width = "850px"; 
+
+        var btns = document.querySelector('.btn-zone.no-print');
+        btns.style.display = 'none'; 
+
+        if (window.html2canvas) {
+            html2canvas(div, { 
+                scale: 3, 
+                backgroundColor: "#ffffff",
+                windowWidth: 1200, 
+                scrollY: -window.scrollY,
+                useCORS: true
+            }).then(function(canvas) {
+                btns.style.display = 'block'; 
+                var imgUrl = canvas.toDataURL("image/jpeg");
+                var modal = document.createElement('div');
+                modal.className = 'img-modal';
+                modal.innerHTML = `
+                    <div class="modal-tip">👆 請長按圖片 -> 加入照片/下載圖片</div>
+                    <img src="${imgUrl}">
+                    <button class="modal-close" onclick="this.parentElement.remove()">關閉視窗</button>
+                `;
+                document.body.appendChild(modal);
+                div.style.width = originalWidth;
+            }).catch(function(err) {
+                btns.style.display = 'block';
+                div.style.width = originalWidth;
+                alert("截圖失敗");
+            });
+        }
+    };
+</script>
+
 </body>
 </html>
